@@ -439,6 +439,17 @@
 "sandbox.diag.copy" = "Sao chép chẩn đoán đầy đủ";
 "sandbox.diag.copied" = "Đã sao chép";
 "sandbox.diag.export_footer" = "Văn bản chẩn đoán gồm phiên bản hệ điều hành, backend, App Group, kết quả dò và các lần cấp quyền gần đây — dán trực tiếp vào báo cáo.";
+
+"diag.uaf.title" = "Dò UAF IOSurface";
+"diag.uaf.status" = "Trạng thái";
+"diag.uaf.not_run" = "Chưa chạy";
+"diag.uaf.run" = "Chạy dò";
+"diag.uaf.running" = "Đang dò…";
+"diag.uaf.note" = "Chỉ kiểm tra xem sổ đăng ký IOSurfaceRoot có điều khiển được từ không gian người dùng hay không (điều kiện tiên quyết của CVE-2026-112477). Không phun heap, không đua luồng, không ghi vào nhân; kết quả dương tính không có nghĩa là khai thác được.";
+"diag.uaf.controllable" = "Điều khiển được (120/120)";
+"diag.uaf.partial" = "Điều khiển một phần";
+"diag.uaf.unavailable" = "Không khả dụng / đã vá";
+"diag.uaf.service_missing" = "Không thấy dịch vụ";
 "browser.error_source_missing" = "Không thể truy cập tệp nguồn đã chọn.";
 "browser.error_destination_missing" = "Thư mục đích không còn tồn tại.";
 "browser.error_source_directory" = "Hãy chọn một tệp, không phải thư mục.";

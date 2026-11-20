@@ -439,6 +439,17 @@
 "sandbox.diag.copy" = "复制完整诊断";
 "sandbox.diag.copied" = "已复制";
 "sandbox.diag.export_footer" = "诊断文本包含系统版本、后端、App Group、探测结果与最近授权记录，可直接粘贴反馈。";
+
+"diag.uaf.title" = "IOSurface UAF 探测";
+"diag.uaf.status" = "状态";
+"diag.uaf.not_run" = "未运行";
+"diag.uaf.run" = "运行探测";
+"diag.uaf.running" = "探测中…";
+"diag.uaf.note" = "只验证 IOSurfaceRoot 注册表是否可由用户态操控（CVE-2026-112477 前置条件）。不进行堆喷、竞态或内核写入，结果不代表可利用。";
+"diag.uaf.controllable" = "可控（120/120）";
+"diag.uaf.partial" = "部分可控";
+"diag.uaf.unavailable" = "不可用 / 已修复";
+"diag.uaf.service_missing" = "服务不可见";
 "browser.error_source_missing" = "所选源文件不可用。";
 "browser.error_destination_missing" = "目标文件夹已不存在。";
 "browser.error_source_directory" = "请选择文件，而不是文件夹。";

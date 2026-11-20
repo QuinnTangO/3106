@@ -98,6 +98,7 @@ enum SandboxDiagnostics {
             lines.append("LS layout hit: \(lsLayoutHit)")
         }
         lines.append("Flags preference: \(Self.flagsPreferenceSummary)")
+        lines.append(IOSurfaceUAFProbe.exportLine(IOSurfaceUAFProbe.lastResult))
         lines.append("")
         lines.append("Recent grants (oldest first, max \(ringLimit)):")
         let snapshot = recentGrants

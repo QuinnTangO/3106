@@ -2083,6 +2083,38 @@ expectFalse(ExploitSupportPolicy.requiresExplicitUnlock(isKernelBackend: false, 
 expectFalse(ExploitSupportPolicy.requiresExplicitUnlock(isKernelBackend: false, hasAccess: true),
             "a working system backend needs no unlock either")
 
+// MARK: - IOSurface UAF probe verdict mapping (spec 05-00)
+//
+// The probe itself needs IOKit on a device; the verdict mapping is pure and
+// must stay exact: a healthy 26.x device reports "controllable", a patched
+// one "unavailable", and a missing service is distinguished from a patched
+// one because the user action differs (re-sign vs stay put).
+expect(IOSurfaceUAFProbe.verdict(serviceFound: false, shape: -1, ok: 0, total: 0) == .serviceMissing,
+       "missing service is its own verdict")
+expect(IOSurfaceUAFProbe.verdict(serviceFound: true, shape: -1, ok: 0, total: 0) == .unavailable,
+       "calibration failure is unavailable")
+expect(IOSurfaceUAFProbe.verdict(serviceFound: true, shape: 1, ok: 0, total: 120) == .unavailable,
+       "no healthy iteration is unavailable")
+expect(IOSurfaceUAFProbe.verdict(serviceFound: true, shape: 1, ok: 120, total: 120) == .controllable,
+       "120/120 is controllable")
+expect(IOSurfaceUAFProbe.verdict(serviceFound: true, shape: 1, ok: 60, total: 120) == .partial,
+       "a partial run is partial")
+expect(IOSurfaceUAFProbe.verdict(serviceFound: true, shape: 1, ok: 40, total: 40) == .partial,
+       "a timeout-shortened perfect run is still not proven controllable")
+
+expect(IOSurfaceUAFProbe.exportLine(nil) == "IOSurface UAF: not-run",
+       "unrun export line is explicit")
+
+let uafSample = IOSurfaceUAFResult(
+    verdict: .controllable, ok: 120, total: 120, shape: 1,
+    timedOut: false, elapsedMS: 84, failCodes: nil,
+    osVersion: "26.4", build: "23E246", machine: "iPhone17,1",
+    at: Date(timeIntervalSince1970: 0))
+let uafLine = IOSurfaceUAFProbe.exportLine(uafSample)
+expect(uafLine.contains("controllable"), "export names the verdict")
+expect(uafLine.contains("120/120"), "export carries the count")
+expect(uafLine.contains("build=23E246"), "export carries the build")
+
 if failures == 0 {
     print("PASS: \(checks) policy checks")
     exit(0)

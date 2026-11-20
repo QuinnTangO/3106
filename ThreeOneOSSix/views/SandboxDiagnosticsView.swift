@@ -13,6 +13,8 @@ struct SandboxDiagnosticsView: View {
     @State private var clearTick = 0
     @State private var resetRunning = false
     @State private var resetSummary: String?
+    @State private var uafRunning = false
+    @State private var uafResult: IOSurfaceUAFResult?
 
     var body: some View {
         List {
@@ -65,6 +67,41 @@ struct SandboxDiagnosticsView: View {
             }
 
             Section {
+                HStack {
+                    Text(language.text("diag.uaf.status"))
+                    Spacer()
+                    Text(
+                        uafResult.map { language.text($0.verdict.localizationKey) }
+                            ?? language.text("diag.uaf.not_run")
+                    )
+                    .foregroundStyle(uafColor)
+                }
+                if let uafResult {
+                    Text(uafResult.detail)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                Button {
+                    runUAFProbe()
+                } label: {
+                    if uafRunning {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text(language.text("diag.uaf.running"))
+                        }
+                    } else {
+                        Label(language.text("diag.uaf.run"), systemImage: "waveform.path.ecg")
+                    }
+                }
+                .disabled(uafRunning)
+            } header: {
+                Text(language.text("diag.uaf.title"))
+            } footer: {
+                Text(language.text("diag.uaf.note"))
+            }
+
+            Section {
                 ForEach(SandboxDiagnostics.recentGrants.reversed()) { record in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
@@ -105,6 +142,25 @@ struct SandboxDiagnosticsView: View {
         .navigationTitle(language.text("sandbox.diag.title"))
         .navigationBarTitleDisplayMode(.inline)
         .id(clearTick)
+        .onAppear { uafResult = IOSurfaceUAFProbe.lastResult }
+    }
+
+    private var uafColor: Color {
+        switch uafResult?.verdict {
+        case .controllable: return .green
+        case .partial: return .orange
+        case .unavailable, .serviceMissing: return .red
+        case nil: return .secondary
+        }
+    }
+
+    private func runUAFProbe() {
+        guard !uafRunning else { return }
+        uafRunning = true
+        IOSurfaceUAFRunner.run { result in
+            uafResult = result
+            uafRunning = false
+        }
     }
 
     private func runProbe() {

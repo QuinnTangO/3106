@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **IOSurface UAF 可用性探测**：设置 → 沙箱诊断新增手动探测（spec `05-00-iosurface-uaf-probe`），验证 `IOSurfaceRoot` 注册表的注册 / 注销 / 重复注册状态机能否由用户态完整操控（120 轮）。结果分「可控 / 部分可控 / 不可用 / 服务不可见」四态，并写入诊断报告（含 build 与机型），便于汇总 iOS 26.x–27.x 的版本矩阵。探测只读：不进行堆喷、竞态或内核写入，结果只代表 UAF 前置条件成立，不代表可利用。
+- 四语键集增至 1589。
+
+### Verification
+
+- `bash Tests/run_policy_tests.sh`：501 项通过（含 verdict 映射与导出行断言）。
+- Release 构建（`xcodebuild -scheme 3106`）：通过。
+- 真机探测：未执行（需侧载后在诊断页手动运行）。
+
 ## [3.2.8] - 2026-11-20
 
 ### Fixed

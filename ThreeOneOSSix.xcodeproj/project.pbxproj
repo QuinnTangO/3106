@@ -20,6 +20,10 @@
 		3106W901 /* SandboxDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106W903; };
 		3106W905 /* GrantRetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106W907; };
 		3106W909 /* SandboxDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106W911; };
+		3106W920 /* iosurface_uaf_probe.c in Sources */ = {isa = PBXBuildFile; fileRef = 3106W921; };
+		3106W923 /* IOSurfaceUAFProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106W924; };
+		3106W925 /* IOSurfaceUAFRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106W926; };
+		3106W931 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3106W930; };
 		3105A210 /* mcm_bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A030; };
 		3105A220 /* kexploit_opa334.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A080; };
 		3105A221 /* offsets.m in Sources */ = {isa = PBXBuildFile; fileRef = 3105A081; };
@@ -199,6 +203,11 @@
 		3106W032 /* ThreeOneOSSix.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ThreeOneOSSix.entitlements; sourceTree = "<group>"; };
 		3106W033 /* SandboxAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxAccess.swift; sourceTree = "<group>"; };
 		3106W903 /* SandboxDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxDiagnostics.swift; sourceTree = "<group>"; };
+		3106W921 /* iosurface_uaf_probe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = iosurface_uaf_probe.c; sourceTree = "<group>"; };
+		3106W922 /* iosurface_uaf_probe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iosurface_uaf_probe.h; sourceTree = "<group>"; };
+		3106W924 /* IOSurfaceUAFProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSurfaceUAFProbe.swift; sourceTree = "<group>"; };
+		3106W926 /* IOSurfaceUAFRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSurfaceUAFRunner.swift; sourceTree = "<group>"; };
+		3106W930 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		3106W907 /* GrantRetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrantRetry.swift; sourceTree = "<group>"; };
 		3105A041 /* mcm_bridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mcm_bridge.h; sourceTree = "<group>"; };
 		3105A050 /* ThreeOneOSSix-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ThreeOneOSSix-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -383,6 +392,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3106W931 /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -434,6 +444,8 @@
 				3105A041 /* mcm_bridge.h */,
 				3105F100 /* wallpaper_zip.c */,
 				3105F101 /* wallpaper_zip.h */,
+				3106W921 /* iosurface_uaf_probe.c */,
+				3106W922 /* iosurface_uaf_probe.h */,
 			);
 			path = exploit;
 			sourceTree = "<group>";
@@ -528,6 +540,8 @@
 				3105D14B /* WiFiShareConnection.swift */,
 				3106W033 /* SandboxAccess.swift */,
 				3106W903 /* SandboxDiagnostics.swift */,
+				3106W924 /* IOSurfaceUAFProbe.swift */,
+				3106W926 /* IOSurfaceUAFRunner.swift */,
 				3106W907 /* GrantRetry.swift */,
 				3105B114 /* PatchProjectModels.swift */,
 				3105B115 /* PatchPackageCodec.swift */,
@@ -709,6 +723,9 @@
 				3106W901,
 				3106W905,
 				3106W909,
+				3106W920,
+				3106W923,
+				3106W925,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
 				3105A224, 3105A225,
 				3106C0D3, 3106C0D5,

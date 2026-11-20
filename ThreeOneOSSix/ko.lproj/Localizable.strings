@@ -424,6 +424,17 @@
 "sandbox.diag.copy" = "전체 진단 정보 복사";
 "sandbox.diag.copied" = "복사됨";
 "sandbox.diag.export_footer" = "진단 텍스트에는 OS 버전, 백엔드, App Group, 프로브 결과 및 최근 권한 부여가 포함됩니다. 보고서에 그대로 붙여 넣으세요.";
+
+"diag.uaf.title" = "IOSurface UAF 프로브";
+"diag.uaf.status" = "상태";
+"diag.uaf.not_run" = "실행 안 함";
+"diag.uaf.run" = "프로브 실행";
+"diag.uaf.running" = "프로브 중…";
+"diag.uaf.note" = "IOSurfaceRoot 레지스트리를 사용자 공간에서 제어할 수 있는지(CVE-2026-112477의 전제 조건)만 확인합니다. 힙 그루밍, 경쟁, 커널 쓰기는 하지 않으며 양성 결과가 악용 가능성을 의미하지는 않습니다.";
+"diag.uaf.controllable" = "제어 가능 (120/120)";
+"diag.uaf.partial" = "부분 제어";
+"diag.uaf.unavailable" = "사용 불가 / 패치됨";
+"diag.uaf.service_missing" = "서비스 확인 불가";
 "browser.error_source_missing" = "선택한 소스 파일을 사용할 수 없습니다.";
 "browser.error_destination_missing" = "대상 폴더가 더 이상 존재하지 않습니다.";
 "browser.error_source_directory" = "폴더가 아닌 파일을 선택하세요.";
