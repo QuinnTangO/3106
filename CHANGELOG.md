@@ -15,12 +15,14 @@ All notable user-facing changes are documented in this file.
 - Release 构建（`xcodebuild -scheme 3106`）：通过。
 - 真机探测：未执行（需侧载后在诊断页手动运行）。
 
-## [3.2.8 (34) beta] - 2026-11-23
+## [3.2.8 (35) beta] - 2026-11-24
 
-Beta 通道构建，以 GitHub Pre-release 分发；iOS 17.5.1 实测通过后同一构建转为正式版。
+Beta 通道构建，以 GitHub Pre-release 分发；iOS 17.5.1 实测通过后同一构建转为正式版。取代 3.2.8 (34) beta——该构建的解锁横幅无法打开 Unlock 页。
 
 ### Fixed
 
+- **解锁横幅点击无效（34 beta）**：橙色横幅的 `NavigationLink` 位于 `TabView` / `NavigationSplitView` 之外，外层没有导航容器，点击不会推入 UnlockView，也不会写任何日志（34 beta 日志中没有任何 `app: running …` / `kexploit:` 行）。现在改为 `Button` + `sheet`（内含 `NavigationStack`），Unlock 页顶部增加「关闭」按钮。
+- **恢复启动自动运行内核链（iOS 17/18）**：3.2.7 移除自动运行后，用户必须先点横幅、再点按钮才能解锁；横幅又点不开，等于整条链不可达。启动时对 kernel 后端自动运行一次（失败不自动重跑，手动重试仍可用）。
 - **iOS 17.5.1 上「运行内核」点击无效**：3.2.7 把沙盒逃逸探针从参考信息改成了成功硬门槛，而探针要求 `/private/var/mobile/Containers/Data/Application` 与 `/private/var/mobile/Containers/Data/System` 两个目录都完成写-读-删。iOS 17.5.1 上后者不可访问（枚举返回 NULL），于是内核 R/W 已成功、3.2.6 也能正常使用的设备被一律判定失败；失败后 `runKernelExploitIfNeeded()` 又被 `!exploitStatus.isFailed` 拦下，橙色横幅继续提示点击，实际每次点击都直接返回——表现为「要求点击运行内核但点击不了」。
 - **探针改为任一目录通过即可**：两个目标容器目录里任一个完成写-读-删，即证明沙盒边界已被越过；每个目录的结果与 errno 写入日志（`kexploit: sandbox probe …`），设备报告可直接区分「目录不存在」与「逃逸未落地」。
 - **iOS < 26 恢复降级语义并显式标注**：内核 R/W 建立但探针未确认时，状态记为 `kernel (limited)`，橙色横幅消失、容器功能恢复，Unlock 页以橙色警告说明「沙盒逃逸未确认」，不再静默当作完整成功；iOS 26+ 的严格判定不变。
@@ -34,7 +36,7 @@ Beta 通道构建，以 GitHub Pre-release 分发；iOS 17.5.1 实测通过后�
 
 - `bash Tests/run_policy_tests.sh`：新增 `KernelChainVerdict`（full / limited / failed 六种组合）与 `ExploitRetryPolicy` 三条断言。
 - Release 构建：通过。
-- 真机验证：待 beta 用户在 iOS 17.5.1 设备安装 build 34 后运行内核链并回传日志，通过后转正式版。
+- 真机验证：待 beta 用户在 iOS 17.5.1 设备安装 build 35 后打开 App（启动即自动运行内核链）并回传日志，通过后转正式版。
 
 ## [3.2.8] - 2026-11-20
 

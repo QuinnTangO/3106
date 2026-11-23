@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showLogs = false
     @State private var showAppGroupAlert = false
+    @State private var showUnlockSheet = false
     @StateObject private var scanCoordinator = ScanCoordinator()
     @EnvironmentObject private var appState: AppState
 
@@ -94,14 +95,23 @@ struct ContentView: View {
             // while the chain has not succeeded — a settled failure stays
             // visible through the Unlock screen rather than nagging here.
             if appState.needsUnlock {
-                NavigationLink {
-                    UnlockView()
+                // A NavigationLink here did nothing: this overlay lives
+                // outside the TabView / NavigationSplitView, so there is no
+                // navigation container to push into. The banner looked
+                // tappable and swallowed every tap (3.2.7–3.2.8-34 beta).
+                Button {
+                    showUnlockSheet = true
                 } label: {
                     UnlockBanner()
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 12)
                 .padding(.top, 6)
+            }
+        }
+        .sheet(isPresented: $showUnlockSheet) {
+            NavigationStack {
+                UnlockView()
             }
         }
         .patchStorePresentation(patchStore)

@@ -27,6 +27,11 @@ struct UnlockView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(language.text("unlock.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(language.text("common.close")) { dismiss() }
+            }
+        }
     }
 
     private var backendSection: some View {

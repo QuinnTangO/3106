@@ -245,11 +245,25 @@ class AppState: ObservableObject {
         guard applicable else { return }
 
         refreshKernelExploitStatus()
-        // Deliberately no auto-run. The kernel chain reboots the device when it
-        // goes wrong, and a process that quietly executes an exploit at launch
-        // gives the user no chance to consent or to read what happened. The
-        // Unlock screen is the only entry point now; `kernelExploitRunning`,
-        // `exploitStatus` and the banner state drive it.
+        autoRunKernelExploitIfNeeded()
+    }
+
+    /// 3.2.6 ran the chain at launch; 3.2.7 moved it behind a banner whose
+    /// NavigationLink could not navigate, so many users never ran it at all
+    /// (the 3.2.8-34 beta log contains no `app: running …` line). Auto-run is
+    /// back for the kernel backend only: once per launch, never after a
+    /// settled failure (a tap on the banner still retries).
+    private var autoRunAttempted = false
+
+    private func autoRunKernelExploitIfNeeded() {
+        guard SandboxAccess.backend == .kernel,
+              !autoRunAttempted,
+              !kernelExploitRunning,
+              !exploitStatus.isSuccess,
+              !exploitStatus.isFailed else { return }
+        autoRunAttempted = true
+        log("app: starting kernel exploit automatically")
+        runKernelExploitIfNeeded()
     }
 
     /// True when the app should offer the Unlock screen: a kernel backend that
