@@ -283,30 +283,33 @@ class AppState: ObservableObject {
 
     func runKernelExploitIfNeeded() {
         refreshKernelExploitStatus()
-        guard !kernelExploitRunning,
-              !exploitStatus.isSuccess,
-              !exploitStatus.isFailed else { return }
+        // A tap is an explicit retry. The old `!exploitStatus.isFailed` guard
+        // silently swallowed every tap after a failure while the orange banner
+        // kept asking the user to tap — the 3.2.7 no-op on iOS 17.5.1.
+        guard ExploitRetryPolicy.canStart(
+            isRunning: kernelExploitRunning,
+            isSuccess: exploitStatus.isSuccess
+        ) else { return }
+        if exploitStatus.isFailed {
+            log("app: retrying kernel chain after a previous failure")
+        }
         kernelExploitRunning = true
         exploitStatus = .notStarted
         let backend = SandboxAccess.backend
         log("app: running \(backend.displayName) access setup on background...")
         DispatchQueue.global(qos: .userInitiated).async {
-            let ok = KernelExploit.run()
+            let method = KernelExploit.runReportingVerdict()
             DispatchQueue.main.async {
                 self.kernelExploitRunning = false
-                if ok {
-                    self.exploitStatus = .success(method: backend.displayName)
-                    if backend == .kernel {
-                        log("app: kernel access active")
-                    } else {
-                        log("app: \(backend.displayName) access active")
-                    }
+                if let method = method {
+                    self.exploitStatus = .success(method: method)
+                    log("app: \(method) access active")
                 } else {
                     self.exploitStatus = .failed(method: backend.displayName, code: -1)
                     if backend == .worseQuery && !SandboxAccess.hasAppGroup {
                         log("app: worse_query needs an App Group; re-sign with a tool that provides one")
                     } else {
-                        log("app: \(backend.displayName) setup failed — relaunch the app before retrying")
+                        log("app: \(backend.displayName) setup failed — tap retry to run the chain again")
                     }
                 }
             }

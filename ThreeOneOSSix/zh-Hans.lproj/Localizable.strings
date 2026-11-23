@@ -1623,3 +1623,7 @@
 "unlock.log_empty" = "尚无日志。点上方按钮后，链的每一步都会出现在这里。";
 "unlock.banner_title" = "需要解锁";
 "unlock.banner_detail" = "点此运行内核链以获得容器访问";
+"unlock.banner_detail_failed" = "上次解锁失败，点此查看原因并重试";
+"unlock.retry" = "重试解锁";
+"unlock.retry_hint" = "上次运行失败。可以直接重试；如果设备刚才不稳定，先重启设备再试更稳妥。";
+"unlock.limited_detail" = "内核读写已激活，但沙盒逃逸探测未确认；若容器读写失败，请把上方日志反馈给开发者。";

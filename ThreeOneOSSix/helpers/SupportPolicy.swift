@@ -1,5 +1,44 @@
 import Foundation
 
+/// What a finished kernel-chain attempt actually proved.
+///
+/// `full` means the outside-sandbox write probe passed. `limited` means kernel
+/// R/W is established but the probe did not — the 3.2.6 fallback, which the
+/// 3.2.7 guard turned into a hard failure on devices such as iOS 17.5.1 whose
+/// .../Data/System directory is unreachable even after the escape.
+enum KernelChainVerdict: Equatable {
+    case full
+    case limited
+    case failed
+}
+
+enum KernelChainPolicy {
+    /// Pure: call only after `kexploit_opa334()` succeeded. Below iOS 26 the
+    /// kernel chain remains useful without a confirmed escape, so a failed
+    /// probe degrades to `limited` instead of `failed`.
+    static func verdict(
+        major: Int,
+        sandboxEscapeReturn: Int32,
+        reachable: Bool
+    ) -> KernelChainVerdict {
+        // The write-read-delete probe is the stronger evidence: when it passes
+        // the sandbox is demonstrably out of the way, even if sandbox_escape()
+        // returned -1 because its own trailing probe sampled at a bad moment.
+        if reachable { return .full }
+        if major < 26 { return .limited }
+        return .failed
+    }
+}
+
+enum ExploitRetryPolicy {
+    /// A manual tap is an explicit retry: the old guard refused every tap
+    /// after `.failed`, which made the orange banner's "tap to run" prompt
+    /// permanently inert. Running and already-succeeded states stay blocked.
+    static func canStart(isRunning: Bool, isSuccess: Bool) -> Bool {
+        !isRunning && !isSuccess
+    }
+}
+
 enum ExploitSupportPolicy {
     static let verifiedIOS17Range = "17.0–17.7.x"
     static let verifiedIOS18Range = "18.0–18.7.1"

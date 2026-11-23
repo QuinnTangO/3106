@@ -1623,3 +1623,7 @@
 "unlock.log_empty" = "No log yet. Press the button above and each stage of the chain appears here.";
 "unlock.banner_title" = "Unlock required";
 "unlock.banner_detail" = "Tap to run the kernel chain and gain container access";
+"unlock.banner_detail_failed" = "Last unlock failed — tap to see why and retry";
+"unlock.retry" = "Retry unlock";
+"unlock.retry_hint" = "The last run failed. You can retry now; restart the device first if it was unstable.";
+"unlock.limited_detail" = "Kernel R/W is active but the sandbox escape probe did not confirm it. If container reads or writes fail, send the log above to the developer.";

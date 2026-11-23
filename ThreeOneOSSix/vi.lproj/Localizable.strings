@@ -1623,3 +1623,7 @@
 "unlock.log_empty" = "Chưa có nhật ký. Nhấn nút phía trên, từng bước của chuỗi sẽ hiện ở đây.";
 "unlock.banner_title" = "Cần mở khóa";
 "unlock.banner_detail" = "Nhấn để chạy chuỗi khai thác nhân và có quyền truy cập vùng chứa";
+"unlock.banner_detail_failed" = "Mở khóa trước đó thất bại — chạm để xem lý do và thử lại";
+"unlock.retry" = "Thử lại mở khóa";
+"unlock.retry_hint" = "Lần chạy trước đã thất bại. Bạn có thể thử lại ngay; nếu thiết bị vừa không ổn định, hãy khởi động lại trước.";
+"unlock.limited_detail" = "Quyền đọc/ghi kernel đã hoạt động nhưng đầu dò thoát hộp cát chưa xác nhận. Nếu đọc/ghi vùng chứa thất bại, hãy gửi nhật ký ở trên cho nhà phát triển.";

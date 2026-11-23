@@ -69,6 +69,31 @@ func expectNoThrow(_ message: String, body: () throws -> Void) {
     }
 }
 
+// KernelChainVerdict — regression guard for the iOS 17.5.1 no-op: the escape
+// probe cannot see .../Data/System on that device even when kernel R/W works,
+// so "probe failed" must degrade to limited below iOS 26, never to failure.
+expect(KernelChainPolicy.verdict(major: 17, sandboxEscapeReturn: 0, reachable: true) == .full,
+       "escape + probe passes is a full success")
+expect(KernelChainPolicy.verdict(major: 17, sandboxEscapeReturn: 0, reachable: false) == .limited,
+       "iOS 17 without a passing probe is limited")
+expect(KernelChainPolicy.verdict(major: 17, sandboxEscapeReturn: -1, reachable: false) == .limited,
+       "iOS 17 escape failure without a passing probe keeps the 3.2.6 fallback")
+expect(KernelChainPolicy.verdict(major: 17, sandboxEscapeReturn: -1, reachable: true) == .full,
+       "a passing probe is a full success even when escape returned -1")
+expect(KernelChainPolicy.verdict(major: 18, sandboxEscapeReturn: -1, reachable: false) == .limited,
+       "iOS 18 shares the iOS 17 fallback")
+expect(KernelChainPolicy.verdict(major: 26, sandboxEscapeReturn: -1, reachable: false) == .failed,
+       "iOS 26+ never uses the limited fallback")
+
+// ExploitRetryPolicy — a manual tap is an explicit retry; only running and
+// already-succeeded states stay blocked.
+expect(ExploitRetryPolicy.canStart(isRunning: false, isSuccess: false),
+       "a failed or idle state allows an explicit retry")
+expectFalse(ExploitRetryPolicy.canStart(isRunning: true, isSuccess: false),
+            "a running chain cannot be started twice")
+expectFalse(ExploitRetryPolicy.canStart(isRunning: false, isSuccess: true),
+            "a succeeded chain is not re-run")
+
 // iOS 17 kernel range
 expect(ExploitSupportPolicy.supportsKernelExploit(major: 17, minor: 0, patch: 0), "17.0 kernel")
 expect(ExploitSupportPolicy.supportsKernelExploit(major: 17, minor: 7, patch: 9), "17.7.x kernel")

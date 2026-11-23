@@ -15,6 +15,25 @@ All notable user-facing changes are documented in this file.
 - Release 构建（`xcodebuild -scheme 3106`）：通过。
 - 真机探测：未执行（需侧载后在诊断页手动运行）。
 
+## [3.2.8 (34)] - 2026-11-23
+
+### Fixed
+
+- **iOS 17.5.1 上「运行内核」点击无效**：3.2.7 把沙盒逃逸探针从参考信息改成了成功硬门槛，而探针要求 `/private/var/mobile/Containers/Data/Application` 与 `/private/var/mobile/Containers/Data/System` 两个目录都完成写-读-删。iOS 17.5.1 上后者不可访问（枚举返回 NULL），于是内核 R/W 已成功、3.2.6 也能正常使用的设备被一律判定失败；失败后 `runKernelExploitIfNeeded()` 又被 `!exploitStatus.isFailed` 拦下，橙色横幅继续提示点击，实际每次点击都直接返回——表现为「要求点击运行内核但点击不了」。
+- **探针改为任一目录通过即可**：两个目标容器目录里任一个完成写-读-删，即证明沙盒边界已被越过；每个目录的结果与 errno 写入日志（`kexploit: sandbox probe …`），设备报告可直接区分「目录不存在」与「逃逸未落地」。
+- **iOS < 26 恢复降级语义并显式标注**：内核 R/W 建立但探针未确认时，状态记为 `kernel (limited)`，橙色横幅消失、容器功能恢复，Unlock 页以橙色警告说明「沙盒逃逸未确认」，不再静默当作完整成功；iOS 26+ 的严格判定不变。
+- **失败后可手动重试**：`.failed` 不再阻止下一次点击，重试前记录 `app: retrying kernel chain after a previous failure`。按钮在失败状态显示「重试解锁」，横幅文案改为「查看原因并重试」。
+
+### Added
+
+- 四语键集新增 `unlock.retry` / `unlock.retry_hint` / `unlock.banner_detail_failed` / `unlock.limited_detail`。
+
+### Verification
+
+- `bash Tests/run_policy_tests.sh`：新增 `KernelChainVerdict`（full / limited / failed 六种组合）与 `ExploitRetryPolicy` 三条断言。
+- Release 构建：通过。
+- 真机验证：未执行（需用户在 iOS 17.5.1 设备安装 build 34 后运行内核链并回传日志）。
+
 ## [3.2.8] - 2026-11-20
 
 ### Fixed

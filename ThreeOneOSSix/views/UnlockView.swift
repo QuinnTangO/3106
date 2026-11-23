@@ -54,10 +54,21 @@ struct UnlockView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             case .success(let method):
+                // The iOS < 26 fallback keeps kernel-only access working on
+                // devices whose escape probe cannot confirm; show it as a
+                // warning instead of a clean success so the state stays honest.
+                let limited = method.contains("(limited)")
                 LabeledContent(language.text("unlock.result")) {
-                    Label(method, systemImage: "checkmark.seal.fill")
+                    Label(method, systemImage: limited
+                          ? "exclamationmark.triangle.fill"
+                          : "checkmark.seal.fill")
                         .font(.footnote)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(limited ? .orange : .green)
+                }
+                if limited {
+                    Text(language.text("unlock.limited_detail"))
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
                 }
                 if let duration = KernelExploit.lastDuration {
                     LabeledContent(language.text("unlock.duration")) {
@@ -77,6 +88,9 @@ struct UnlockView: View {
                             .font(.footnote.monospaced())
                     }
                 }
+                Text(language.text("unlock.retry_hint"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             case .unsupported(let message):
                 Text(message)
                     .font(.footnote)
@@ -97,7 +111,9 @@ struct UnlockView: View {
                     }
                     Text(appState.kernelExploitRunning
                          ? language.text("unlock.running")
-                         : language.text("unlock.run"))
+                         : language.text(appState.exploitStatus.isFailed
+                                         ? "unlock.retry"
+                                         : "unlock.run"))
                 }
             }
             .disabled(appState.kernelExploitRunning)

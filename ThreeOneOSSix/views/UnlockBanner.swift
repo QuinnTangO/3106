@@ -20,7 +20,9 @@ struct UnlockBanner: View {
                     .font(.footnote.weight(.semibold))
                 Text(appState.kernelExploitRunning
                      ? language.text("unlock.running")
-                     : language.text("unlock.banner_detail"))
+                     : language.text(appState.exploitStatus.isFailed
+                                     ? "unlock.banner_detail_failed"
+                                     : "unlock.banner_detail"))
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(1)
