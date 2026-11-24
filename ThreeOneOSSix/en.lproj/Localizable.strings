@@ -1348,6 +1348,7 @@
 "settings.update_new" = "New version %@ available";
 "settings.update_latest" = "Up to date";
 "update.open_github" = "Download from GitHub";
+"update.open_download" = "Open download";
 "update.current" = "Currently installed: %@";
 
 // Migration + config packages (stage 3)
@@ -1551,8 +1552,8 @@
 
 // Update-check failure reasons (3.2.4)
 "update.failure.bad_response" = "Check failed: the GitHub response could not be parsed, try again later.";
-"update.failure.http" = "Check failed: GitHub returned an error (HTTP %d, possibly rate-limited — try again later).";
-"update.failure.offline" = "Check failed: GitHub unreachable (offline or blocked — needs a proxy or another network).";
+"update.failure.http" = "Check failed: HTTP %d — the update API may be rate-limited or blocked. Use the link below to download manually.";
+"update.failure.offline" = "Check failed: cannot reach the update service (offline or restricted network). Use the link below to download manually.";
 "update.failure.other" = "Check failed:";
 
 // Field-import merge (3.2.5 rebuild)

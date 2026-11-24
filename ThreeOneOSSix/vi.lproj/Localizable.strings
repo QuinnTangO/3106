@@ -1348,6 +1348,7 @@
 "settings.update_new" = "Có bản mới %@";
 "settings.update_latest" = "Đã là bản mới nhất";
 "update.open_github" = "Tải từ GitHub";
+"update.open_download" = "Mở tải xuống";
 "update.current" = "Phiên bản đang cài: %@";
 
 // Migration + config packages (stage 3)
@@ -1551,8 +1552,8 @@
 
 // Update-check failure reasons (3.2.4)
 "update.failure.bad_response" = "Kiểm tra thất bại: không phân giải được phản hồi của GitHub, thử lại sau.";
-"update.failure.http" = "Kiểm tra thất bại: GitHub trả về lỗi (HTTP %d, có thể bị giới hạn — thử lại sau).";
-"update.failure.offline" = "Kiểm tra thất bại: không kết nối được GitHub (ngoại tuyến hoặc bị chặn — cần proxy/mạng khác).";
+"update.failure.http" = "Kiểm tra thất bại: HTTP %d — API cập nhật có thể bị giới hạn hoặc bị chặn. Dùng liên kết bên dưới để tải thủ công.";
+"update.failure.offline" = "Kiểm tra thất bại: không kết nối được dịch vụ cập nhật (ngoại tuyến hoặc mạng bị hạn chế). Dùng liên kết bên dưới để tải thủ công.";
 "update.failure.other" = "Kiểm tra thất bại:";
 
 // Field-import merge (3.2.5 rebuild)

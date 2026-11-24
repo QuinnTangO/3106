@@ -139,7 +139,9 @@ struct ThreeOneOSSixApp: App {
                     title: Text(language.text("update.title")),
                     message: Text(language.text("update.message", offer.version) + "\n" + language.text("update.current", AppInfo.appVersion)),
                     primaryButton: .default(Text(language.text("update.agree"))) {
-                        UIApplication.shared.open(offer.url)
+                        // Straight to the IPA when the manifest pins one;
+                        // the release page is the fallback.
+                        UIApplication.shared.open(offer.downloadURL ?? offer.url)
                     },
                     secondaryButton: .cancel(Text(language.text("common.cancel"))) {}
                 )

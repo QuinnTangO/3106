@@ -28,11 +28,15 @@ struct SettingsView: View {
                 switch outcome {
                 case .updateAvailable(let offer):
                     updateStatus = language.text("settings.update_new", offer.version)
-                    updateURL = offer.url
+                    // Prefer the IPA the manifest pins; fall back to the page.
+                    updateURL = offer.downloadURL ?? offer.url
                 case .upToDate:
                     updateStatus = language.text("settings.update_latest")
                 case .failure(let reason):
-                    updateURL = nil
+                    // A blocked API (403 / rate limit) must not leave the
+                    // user without an entry point: the releases page and the
+                    // static manifest stay reachable when the API does not.
+                    updateURL = AppUpdateChecker.fallbackURL
                     switch reason {
                     case .offline:
                         updateStatus = language.text("update.failure.offline")
@@ -150,7 +154,7 @@ struct SettingsView: View {
 
                     if let updateURL {
                         Link(destination: updateURL) {
-                            Label(language.text("update.open_github"), systemImage: "safari")
+                            Label(language.text("update.open_download"), systemImage: "safari")
                                 .foregroundStyle(AppTheme.accent)
                         }
                     }

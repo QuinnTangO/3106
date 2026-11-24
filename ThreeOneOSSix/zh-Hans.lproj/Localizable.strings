@@ -1348,6 +1348,7 @@
 "settings.update_new" = "有新版本 %@";
 "settings.update_latest" = "已是最新版本";
 "update.open_github" = "前往 GitHub 下载";
+"update.open_download" = "打开下载";
 "update.current" = "当前安装版本：%@";
 
 // Migration + config packages (stage 3)
@@ -1551,8 +1552,8 @@
 
 // Update-check failure reasons (3.2.4)
 "update.failure.bad_response" = "检查失败：GitHub 响应无法解析，稍后再试。";
-"update.failure.http" = "检查失败：GitHub 返回错误（HTTP %d，可能是限流，稍后再试）。";
-"update.failure.offline" = "检查失败：无法连接 GitHub（设备离线或被墙，需代理/其它网络）。";
+"update.failure.http" = "检查失败：HTTP %d（更新接口可能被限流或被网络拦截）。可点下方链接手动下载。";
+"update.failure.offline" = "检查失败：无法连接更新服务（设备离线或网络受限）。可点下方链接手动下载。";
 "update.failure.other" = "检查失败：";
 
 // Field-import merge (3.2.5 rebuild)

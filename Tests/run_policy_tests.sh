@@ -29,6 +29,20 @@ if [[ "$PLIST_BUILD" != "$PROJECT_BUILD" ]]; then
   exit 1
 fi
 
+# update.json is what installed apps read for update checks; a release that
+# bumps Info.plist but forgets the manifest silently serves a stale version.
+MANIFEST="$ROOT/update.json"
+MANIFEST_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$MANIFEST" | head -1 | sed -E 's/.*"([^"]*)"$/\1/')
+MANIFEST_BUILD=$(grep -o '"build"[[:space:]]*:[[:space:]]*[0-9][0-9]*' "$MANIFEST" | head -1 | sed -E 's/[^0-9]*([0-9]+)$/\1/')
+if [[ "$MANIFEST_VERSION" != "$PLIST_VERSION" ]]; then
+  echo "FAIL: update.json version $MANIFEST_VERSION != Info.plist $PLIST_VERSION" >&2
+  exit 1
+fi
+if [[ "$MANIFEST_BUILD" != "$PLIST_BUILD" ]]; then
+  echo "FAIL: update.json build $MANIFEST_BUILD != Info.plist $PLIST_BUILD" >&2
+  exit 1
+fi
+
 # Localization keys must be identical across the three language bundles;
 # a missing key renders the raw key string in the UI.
 "$ROOT/Tests/check_strings_alignment.sh"

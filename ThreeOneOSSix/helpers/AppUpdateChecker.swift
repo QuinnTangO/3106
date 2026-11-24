@@ -12,10 +12,24 @@ enum AppUpdateChecker {
     static let apiURL = URL(string: "https://api.github.com/repos/QuinnTang74/3106/releases/latest")!
     static let fallbackURL = URL(string: "https://github.com/QuinnTang74/3106/releases/latest")!
 
+    /// Static manifests first. The unauthenticated GitHub API is rate limited
+    /// (60 req/h per shared IP) and returns 403 on some networks, which made
+    /// "check for updates" dead even when a plain file download still worked.
+    /// raw.githubusercontent has the shortest propagation; jsDelivr's two
+    /// hosts cover the case where GitHub itself is unreachable.
+    static let manifestURLs = [
+        URL(string: "https://raw.githubusercontent.com/QuinnTang74/3106/main/update.json")!,
+        URL(string: "https://cdn.jsdelivr.net/gh/QuinnTang74/3106@main/update.json")!,
+        URL(string: "https://fastly.jsdelivr.net/gh/QuinnTang74/3106@main/update.json")!,
+    ]
+
     struct Offer: Identifiable {
         let id = UUID()
         let version: String
+        /// Release page — the human-facing fallback link.
         let url: URL
+        /// IPA asset from the manifest, when present.
+        var downloadURL: URL?
     }
 
     static var currentVersion: String {
@@ -30,24 +44,8 @@ enum AppUpdateChecker {
     /// Manual-check variant: same probe, but a version the user previously
     /// dismissed still surfaces (they asked, so tell them).
     static func checkIgnoringDismissal() async -> Offer? {
-        guard let offer = await check() else {
-            // check() suppresses dismissed versions; re-probe raw and
-            // compare versions directly.
-            var request = URLRequest(url: apiURL)
-            request.timeoutInterval = 15
-            request.setValue("3106", forHTTPHeaderField: "User-Agent")
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            guard
-                let (data, _) = try? await URLSession.shared.data(for: request),
-                let decoded = try? JSONDecoder().decode(GitHubRelease.self, from: data),
-                isNewer(normalize(decoded.tagName), than: currentVersion)
-            else { return nil }
-            return Offer(
-                version: normalize(decoded.tagName),
-                url: URL(string: decoded.htmlURL) ?? fallbackURL
-            )
-        }
-        return offer
+        guard let offer = await rawOffer() else { return nil }
+        return isNewer(offer.version, than: currentVersion) ? offer : nil
     }
 
     // MARK: - Outcomes with reasons (3.2.4)
@@ -85,7 +83,17 @@ enum AppUpdateChecker {
 
     /// Manual check with explicit outcome — the settings page uses this so
     /// a blocked probe shows WHY instead of a false "you are up to date".
+    /// The static manifest answers first; the GitHub API is only a fallback.
     static func checkWithOutcome() async -> CheckOutcome {
+        if let manifest = await fetchManifest() {
+            return isNewer(manifest.version, than: currentVersion)
+                ? .updateAvailable(manifest)
+                : .upToDate
+        }
+        return await apiOutcome()
+    }
+
+    private static func apiOutcome() async -> CheckOutcome {
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 15
         request.setValue("3106", forHTTPHeaderField: "User-Agent")
@@ -140,6 +148,23 @@ enum AppUpdateChecker {
     }
 
     static func check() async -> Offer? {
+        // No per-version suppression: the alert's second button is a plain
+        // Cancel, so a release keeps prompting on the next launch or
+        // foreground until it is installed.
+        guard let offer = await rawOffer(),
+              isNewer(offer.version, than: currentVersion) else { return nil }
+        return offer
+    }
+
+    /// Manifest first, GitHub API second. Returns the newest published offer
+    /// without comparing versions, so the silent and manual paths share it.
+    private static func rawOffer() async -> Offer? {
+        if let offer = await fetchManifest() { return offer }
+        return await apiOffer()
+    }
+
+    /// API-only variant; nil on any network or HTTP failure (silent path).
+    private static func apiOffer() async -> Offer? {
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 15
         request.setValue("3106", forHTTPHeaderField: "User-Agent")
@@ -151,18 +176,53 @@ enum AppUpdateChecker {
             }
             let decoded = try JSONDecoder().decode(GitHubRelease.self, from: data)
             let remote = normalize(decoded.tagName)
-            // No per-version suppression: the alert's second button is a
-            // plain Cancel, so a release keeps prompting on the next launch
-            // or foreground until it is installed.
-            guard !remote.isEmpty,
-                  isNewer(remote, than: currentVersion) else {
-                return nil
-            }
+            guard !remote.isEmpty else { return nil }
             let url = URL(string: decoded.htmlURL) ?? fallbackURL
             return Offer(version: remote, url: url)
         } catch {
             return nil
         }
+    }
+
+    private struct UpdateManifest: Decodable {
+        let version: String
+        let build: Int?
+        let page: String?
+        let ipa: String?
+    }
+
+    /// Static manifest probe. A parsed manifest is authoritative for "newest
+    /// published version": no API call, therefore no 403.
+    private static func fetchManifest() async -> Offer? {
+        // Minute-resolution cache buster: raw.githubusercontent caches for a
+        // few minutes, and a stale answer right after a release is the one
+        // case users notice.
+        let stamp = String(Int(Date().timeIntervalSince1970 / 60))
+        for base in manifestURLs {
+            var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
+            components?.queryItems = [URLQueryItem(name: "t", value: stamp)]
+            guard let url = components?.url else { continue }
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 10
+            request.setValue("3106", forHTTPHeaderField: "User-Agent")
+            request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+            guard
+                let (data, response) = try? await URLSession.shared.data(for: request),
+                let http = response as? HTTPURLResponse,
+                (200..<300).contains(http.statusCode),
+                let manifest = try? JSONDecoder().decode(UpdateManifest.self, from: data)
+            else { continue }
+            let remote = normalize(manifest.version)
+            guard !remote.isEmpty else { continue }
+            let page = manifest.page.flatMap(URL.init(string:)) ?? fallbackURL
+            // Only accept the asset when it really is an IPA; a manifest typo
+            // should not turn "update" into a broken Safari download.
+            let download = manifest.ipa
+                .flatMap(URL.init(string:))
+                .flatMap { $0.pathExtension.lowercased() == "ipa" ? $0 : nil }
+            return Offer(version: remote, url: page, downloadURL: download)
+        }
+        return nil
     }
 
     private struct GitHubRelease: Decodable {
