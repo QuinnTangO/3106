@@ -15,9 +15,9 @@ All notable user-facing changes are documented in this file.
 - Release 构建（`xcodebuild -scheme 3106`）：通过。
 - 真机探测：未执行（需侧载后在诊断页手动运行）。
 
-## [3.2.8 (35) beta] - 2026-11-24
+## [3.2.8 (35)] - 2026-11-24
 
-Beta 通道构建，以 GitHub Pre-release 分发；iOS 17.5.1 实测通过后同一构建转为正式版。取代 3.2.8 (34) beta——该构建的解锁横幅无法打开 Unlock 页。
+取代 3.2.8 (34) beta——该构建的解锁横幅无法打开 Unlock 页。本构建已在 iOS 17.5.1（iPhone15,4）真机验证通过：启动自动运行内核链，容器浏览与文件读写恢复。
 
 ### Fixed
 
@@ -36,7 +36,7 @@ Beta 通道构建，以 GitHub Pre-release 分发；iOS 17.5.1 实测通过后�
 
 - `bash Tests/run_policy_tests.sh`：新增 `KernelChainVerdict`（full / limited / failed 六种组合）与 `ExploitRetryPolicy` 三条断言。
 - Release 构建：通过。
-- 真机验证：待 beta 用户在 iOS 17.5.1 设备安装 build 35 后打开 App（启动即自动运行内核链）并回传日志，通过后转正式版。
+- 真机验证：iOS 17.5.1（iPhone15,4）通过——启动自动运行内核链，容器浏览与文件读写恢复。
 
 ## [3.2.8] - 2026-11-20
 
