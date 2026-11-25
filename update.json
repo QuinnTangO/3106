@@ -1,8 +1,8 @@
 {
-  "version": "3.2.10",
-  "build": 37,
-  "page": "https://github.com/QuinnTang74/3106/releases/tag/v3.2.10",
-  "ipa": "https://github.com/QuinnTang74/3106/releases/download/v3.2.10/3106-3.2.10-unsigned.ipa",
-  "notes": "更新检查改用静态清单，修复 403；解锁修复见 3.2.8 (35)。",
-  "published": "2026-11-24"
+  "version": "3.2.11",
+  "build": 38,
+  "page": "https://gitee.com/tangzhanyuan/3106/releases/tag/v3.2.11",
+  "ipa": "https://gitee.com/tangzhanyuan/3106/releases/download/v3.2.11/3106-3.2.11-unsigned.ipa",
+  "notes": "更新检查迁到 Gitee：不再依赖 GitHub API 与 raw 域名，内置仓库链接同步改为 Gitee。",
+  "published": "2026-11-25"
 }
