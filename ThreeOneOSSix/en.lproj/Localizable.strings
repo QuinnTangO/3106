@@ -15,7 +15,7 @@
 "common.finish" = "Finish";
 
 "update.title" = "Update available";
-"update.message" = "3106 %@ is available on GitHub.";
+"update.message" = "3106 %@ is available on Gitee.";
 "update.agree" = "Update";
 "update.dismiss" = "Don't show again";
 "patch.error.wrong_password" = "Incorrect password.";
@@ -226,7 +226,7 @@
 "accessibility.requesting_access" = "Requesting exploit access";
 "accessibility.open_editor_hint" = "Opens the MobileGestalt feature editor";
 "accessibility.run_exploit_hint" = "Requests write access required by the Gestalt editor";
-"accessibility.open_github" = "Open 3106 on GitHub";
+"accessibility.open_github" = "Open 3106 on Gitee";
 "accessibility.open_profile" = "Open %@ profile";
 "accessibility.log_entry" = "Log entry %lld: %@";
 
@@ -253,7 +253,7 @@
 "settings.tab_bar" = "Tab Bar";
 "settings.tab_bar_footer" = "%lld of %lld slots selected. Home is always shown; turn one off before enabling another when full.";
 "settings.tab_bar_fixed" = "Always shown";
-"settings.github" = "GitHub";
+"settings.github" = "Gitee";
 
 "kernel.section_title" = "Kernel Exploit";
 "kernel.run_exploit" = "Run Kernel Exploit";
@@ -1344,10 +1344,10 @@
 "filereplace.preset_name" = "Preset name";
 "settings.update_header" = "Version";
 "settings.check_update" = "Check for updates";
-"settings.update_footer" = "Also checked automatically at launch; new releases live on GitHub Releases.";
+"settings.update_footer" = "Also checked automatically at launch; new releases live on Gitee Releases.";
 "settings.update_new" = "New version %@ available";
 "settings.update_latest" = "Up to date";
-"update.open_github" = "Download from GitHub";
+"update.open_github" = "Download from Gitee";
 "update.open_download" = "Open download";
 "update.current" = "Currently installed: %@";
 
@@ -1551,7 +1551,7 @@
 "sqlite.tools" = "Tools";
 
 // Update-check failure reasons (3.2.4)
-"update.failure.bad_response" = "Check failed: the GitHub response could not be parsed, try again later.";
+"update.failure.bad_response" = "Check failed: the Gitee response could not be parsed, try again later.";
 "update.failure.http" = "Check failed: HTTP %d — the update API may be rate-limited or blocked. Use the link below to download manually.";
 "update.failure.offline" = "Check failed: cannot reach the update service (offline or restricted network). Use the link below to download manually.";
 "update.failure.other" = "Check failed:";

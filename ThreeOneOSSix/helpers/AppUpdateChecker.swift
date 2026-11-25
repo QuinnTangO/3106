@@ -7,20 +7,20 @@ enum AppUpdateChecker {
     /// unauthenticated API (60 req/h per IP); 30 minutes matches the typical
     /// session-cadence a user needs to learn about a fresh release.
     static let foregroundThrottleInterval: TimeInterval = 5 * 60
-    // Points at the 3106 fork; a missing repository simply disables update
-    // prompts until the final distribution address is provided.
-    static let apiURL = URL(string: "https://api.github.com/repos/QuinnTang74/3106/releases/latest")!
-    static let fallbackURL = URL(string: "https://github.com/QuinnTang74/3106/releases/latest")!
+    // Distribution lives on Gitee; every update endpoint points at the
+    // tangzhanyuan/3106 repository. A missing repository simply disables
+    // update prompts instead of failing loudly.
+    static let apiURL = URL(string: "https://gitee.com/api/v5/repos/tangzhanyuan/3106/releases/latest")!
+    static let fallbackURL = URL(string: "https://gitee.com/tangzhanyuan/3106/releases/latest")!
+    /// Gitee's release payload carries no `html_url`, so the human-facing page
+    /// is composed from the tag name.
+    static let releasePageBase = "https://gitee.com/tangzhanyuan/3106/releases/tag/"
 
-    /// Static manifests first. The unauthenticated GitHub API is rate limited
-    /// (60 req/h per shared IP) and returns 403 on some networks, which made
-    /// "check for updates" dead even when a plain file download still worked.
-    /// raw.githubusercontent has the shortest propagation; jsDelivr's two
-    /// hosts cover the case where GitHub itself is unreachable.
+    /// Static manifests first. Gitee's release API is unauthenticated and rate
+    /// limited per IP; the repository's raw file is authoritative for the
+    /// newest published version, so the normal path makes no API call at all.
     static let manifestURLs = [
-        URL(string: "https://raw.githubusercontent.com/QuinnTang74/3106/main/update.json")!,
-        URL(string: "https://cdn.jsdelivr.net/gh/QuinnTang74/3106@main/update.json")!,
-        URL(string: "https://fastly.jsdelivr.net/gh/QuinnTang74/3106@main/update.json")!,
+        URL(string: "https://gitee.com/tangzhanyuan/3106/raw/3106/update.json")!,
     ]
 
     struct Offer: Identifiable {
@@ -97,7 +97,7 @@ enum AppUpdateChecker {
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 15
         request.setValue("3106", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let (data, response): (Data, URLResponse)
         do {
@@ -121,7 +121,7 @@ enum AppUpdateChecker {
         guard (200..<300).contains(http.statusCode) else {
             return .failure(.httpStatus(http.statusCode))
         }
-        guard let decoded = try? JSONDecoder().decode(GitHubRelease.self, from: data) else {
+        guard let decoded = try? JSONDecoder().decode(ReleasePayload.self, from: data) else {
             return .failure(.badResponse)
         }
         let remote = normalize(decoded.tagName)
@@ -129,7 +129,7 @@ enum AppUpdateChecker {
             return .failure(.badResponse)
         }
         if isNewer(remote, than: currentVersion) {
-            let url = URL(string: decoded.htmlURL) ?? fallbackURL
+            let url = decoded.pageURL ?? fallbackURL
             return .updateAvailable(Offer(version: remote, url: url))
         }
         return .upToDate
@@ -168,16 +168,16 @@ enum AppUpdateChecker {
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 15
         request.setValue("3106", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 return nil
             }
-            let decoded = try JSONDecoder().decode(GitHubRelease.self, from: data)
+            let decoded = try JSONDecoder().decode(ReleasePayload.self, from: data)
             let remote = normalize(decoded.tagName)
             guard !remote.isEmpty else { return nil }
-            let url = URL(string: decoded.htmlURL) ?? fallbackURL
+            let url = decoded.pageURL ?? fallbackURL
             return Offer(version: remote, url: url)
         } catch {
             return nil
@@ -194,7 +194,7 @@ enum AppUpdateChecker {
     /// Static manifest probe. A parsed manifest is authoritative for "newest
     /// published version": no API call, therefore no 403.
     private static func fetchManifest() async -> Offer? {
-        // Minute-resolution cache buster: raw.githubusercontent caches for a
+        // Minute-resolution cache buster: Gitee's raw endpoint caches for a
         // few minutes, and a stale answer right after a release is the one
         // case users notice.
         let stamp = String(Int(Date().timeIntervalSince1970 / 60))
@@ -225,13 +225,24 @@ enum AppUpdateChecker {
         return nil
     }
 
-    private struct GitHubRelease: Decodable {
+    /// Gitee release payload. `html_url` is optional because Gitee omits it;
+    /// when it is missing the page address is rebuilt from the tag name.
+    private struct ReleasePayload: Decodable {
         let tagName: String
-        let htmlURL: String
+        let htmlURL: String?
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case htmlURL = "html_url"
+        }
+
+        var pageURL: URL? {
+            if let htmlURL, !htmlURL.isEmpty, let url = URL(string: htmlURL) {
+                return url
+            }
+            let name = AppUpdateChecker.normalize(tagName)
+            guard !name.isEmpty else { return nil }
+            return URL(string: AppUpdateChecker.releasePageBase + "v" + name)
         }
     }
 

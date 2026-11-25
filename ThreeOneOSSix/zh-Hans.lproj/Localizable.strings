@@ -15,7 +15,7 @@
 "common.finish" = "完成";
 
 "update.title" = "发现新版本";
-"update.message" = "GitHub 上已发布 3106 %@。";
+"update.message" = "Gitee 上已发布 3106 %@。";
 "update.agree" = "更新";
 "update.dismiss" = "不再显示";
 "patch.error.wrong_password" = "密码错误。";
@@ -226,7 +226,7 @@
 "accessibility.requesting_access" = "正在请求漏洞利用权限";
 "accessibility.open_editor_hint" = "打开 MobileGestalt 功能编辑器";
 "accessibility.run_exploit_hint" = "请求 Gestalt 编辑器所需的写入权限";
-"accessibility.open_github" = "在 GitHub 上打开 3106";
+"accessibility.open_github" = "在 Gitee 上打开 3106";
 "accessibility.open_profile" = "打开 %@ 的个人资料";
 "accessibility.log_entry" = "日志条目 %lld：%@";
 
@@ -253,7 +253,7 @@
 "settings.tab_bar" = "底栏";
 "settings.tab_bar_footer" = "已选择 %lld/%lld 个槽位，首页固定显示；槽位满时请先关闭一个再开启其他项。";
 "settings.tab_bar_fixed" = "固定显示";
-"settings.github" = "GitHub";
+"settings.github" = "Gitee";
 
 "kernel.section_title" = "内核漏洞利用";
 "kernel.run_exploit" = "运行内核漏洞利用";
@@ -1344,10 +1344,10 @@
 "filereplace.preset_name" = "预设名称";
 "settings.update_header" = "版本";
 "settings.check_update" = "检查更新";
-"settings.update_footer" = "启动时也会自动检查；新版本发布在 GitHub Releases。";
+"settings.update_footer" = "启动时也会自动检查；新版本发布在 Gitee Releases。";
 "settings.update_new" = "有新版本 %@";
 "settings.update_latest" = "已是最新版本";
-"update.open_github" = "前往 GitHub 下载";
+"update.open_github" = "前往 Gitee 下载";
 "update.open_download" = "打开下载";
 "update.current" = "当前安装版本：%@";
 
@@ -1551,7 +1551,7 @@
 "sqlite.tools" = "工具";
 
 // Update-check failure reasons (3.2.4)
-"update.failure.bad_response" = "检查失败：GitHub 响应无法解析，稍后再试。";
+"update.failure.bad_response" = "检查失败：Gitee 响应无法解析，稍后再试。";
 "update.failure.http" = "检查失败：HTTP %d（更新接口可能被限流或被网络拦截）。可点下方链接手动下载。";
 "update.failure.offline" = "检查失败：无法连接更新服务（设备离线或网络受限）。可点下方链接手动下载。";
 "update.failure.other" = "检查失败：";

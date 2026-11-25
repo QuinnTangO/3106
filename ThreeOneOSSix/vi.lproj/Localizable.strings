@@ -15,7 +15,7 @@
 "common.finish" = "Hoàn thành";
 
 "update.title" = "Có bản cập nhật";
-"update.message" = "3106 %@ đã có trên GitHub.";
+"update.message" = "3106 %@ đã có trên Gitee.";
 "update.agree" = "Cập nhật";
 "update.dismiss" = "Không hiển thị lại";
 "patch.error.wrong_password" = "Sai mật khẩu.";
@@ -226,7 +226,7 @@
 "accessibility.requesting_access" = "Đang yêu cầu quyền exploit";
 "accessibility.open_editor_hint" = "Mở trình chỉnh sửa tính năng MobileGestalt";
 "accessibility.run_exploit_hint" = "Yêu cầu quyền ghi cần thiết cho trình chỉnh sửa Gestalt";
-"accessibility.open_github" = "Mở 3106 trên GitHub";
+"accessibility.open_github" = "Mở 3106 trên Gitee";
 "accessibility.open_profile" = "Mở hồ sơ của %@";
 "accessibility.log_entry" = "Mục nhật ký %lld: %@";
 
@@ -253,7 +253,7 @@
 "settings.tab_bar" = "Thanh dưới";
 "settings.tab_bar_footer" = "Đã chọn %lld/%lld vị trí. Trang chủ luôn hiển thị; hãy tắt một mục trước khi bật mục khác khi đã đủ.";
 "settings.tab_bar_fixed" = "Luôn hiển thị";
-"settings.github" = "GitHub";
+"settings.github" = "Gitee";
 
 "kernel.section_title" = "Kernel Exploit";
 "kernel.run_exploit" = "Chạy Kernel Exploit";
@@ -1344,10 +1344,10 @@
 "filereplace.preset_name" = "Tên mẫu";
 "settings.update_header" = "Phiên bản";
 "settings.check_update" = "Kiểm tra cập nhật";
-"settings.update_footer" = "Cũng tự kiểm tra khi khởi động; bản mới nằm trên GitHub Releases.";
+"settings.update_footer" = "Cũng tự kiểm tra khi khởi động; bản mới nằm trên Gitee Releases.";
 "settings.update_new" = "Có bản mới %@";
 "settings.update_latest" = "Đã là bản mới nhất";
-"update.open_github" = "Tải từ GitHub";
+"update.open_github" = "Tải từ Gitee";
 "update.open_download" = "Mở tải xuống";
 "update.current" = "Phiên bản đang cài: %@";
 
@@ -1551,7 +1551,7 @@
 "sqlite.tools" = "Công cụ";
 
 // Update-check failure reasons (3.2.4)
-"update.failure.bad_response" = "Kiểm tra thất bại: không phân giải được phản hồi của GitHub, thử lại sau.";
+"update.failure.bad_response" = "Kiểm tra thất bại: không phân giải được phản hồi của Gitee, thử lại sau.";
 "update.failure.http" = "Kiểm tra thất bại: HTTP %d — API cập nhật có thể bị giới hạn hoặc bị chặn. Dùng liên kết bên dưới để tải thủ công.";
 "update.failure.offline" = "Kiểm tra thất bại: không kết nối được dịch vụ cập nhật (ngoại tuyến hoặc mạng bị hạn chế). Dùng liên kết bên dưới để tải thủ công.";
 "update.failure.other" = "Kiểm tra thất bại:";

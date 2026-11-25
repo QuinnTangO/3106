@@ -14,7 +14,7 @@
 "common.back" = "뒤로";
 "common.finish" = "마침";
 "update.title" = "업데이트 사용 가능";
-"update.message" = "GitHub에서 3106 %@ 버전을 사용할 수 있습니다.";
+"update.message" = "Gitee에서 3106 %@ 버전을 사용할 수 있습니다.";
 "update.agree" = "업데이트";
 "update.dismiss" = "다시 표시하지 않음";
 "patch.error.wrong_password" = "비밀번호가 올바르지 않습니다.";
@@ -219,7 +219,7 @@
 "accessibility.requesting_access" = "익스플로잇 접근 요청 중";
 "accessibility.open_editor_hint" = "MobileGestalt 기능 편집기를 엽니다";
 "accessibility.run_exploit_hint" = "Gestalt 편집기에 필요한 쓰기 접근을 요청합니다";
-"accessibility.open_github" = "GitHub에서 3106 열기";
+"accessibility.open_github" = "Gitee에서 3106 열기";
 "accessibility.open_profile" = "%@ 프로필 열기";
 "accessibility.log_entry" = "로그 항목 %lld: %@";
 "status.not_attempted" = "시도 안 됨";
@@ -244,7 +244,7 @@
 "settings.tab_bar" = "탭 바";
 "settings.tab_bar_footer" = "%lld/%lld 슬롯 선택됨. 홈은 항상 표시됩니다. 가득 찬 경우 다른 슬롯을 켜기 전에 하나를 끄세요.";
 "settings.tab_bar_fixed" = "항상 표시";
-"settings.github" = "GitHub";
+"settings.github" = "Gitee";
 "kernel.section_title" = "커널 익스플로잇";
 "kernel.run_exploit" = "커널 익스플로잇 실행";
 "kernel.exploit_running" = "커널 익스플로잇 실행 중…";
@@ -1325,10 +1325,10 @@
 "filereplace.preset_name" = "프리셋 이름";
 "settings.update_header" = "버전";
 "settings.check_update" = "업데이트 확인";
-"settings.update_footer" = "실행 시 자동으로도 확인합니다. 새 릴리스는 GitHub Releases에 있습니다.";
+"settings.update_footer" = "실행 시 자동으로도 확인합니다. 새 릴리스는 Gitee Releases에 있습니다.";
 "settings.update_new" = "새 버전 %@ 사용 가능";
 "settings.update_latest" = "최신 상태";
-"update.open_github" = "GitHub에서 다운로드";
+"update.open_github" = "Gitee에서 다운로드";
 "update.open_download" = "다운로드 열기";
 "update.current" = "현재 설치됨: %@";
 "configbackup.apply.confirm" = "이 앱에 적용";
@@ -1522,7 +1522,7 @@
 "sqlite.integrity.problems" = "문제 %d개 발견됨";
 "sqlite.integrity.run" = "무결성 검사 (읽기 전용)";
 "sqlite.tools" = "도구";
-"update.failure.bad_response" = "확인 실패: GitHub 응답을 구문 분석할 수 없습니다. 나중에 다시 시도하세요.";
+"update.failure.bad_response" = "확인 실패: Gitee 응답을 구문 분석할 수 없습니다. 나중에 다시 시도하세요.";
 "update.failure.http" = "확인 실패: HTTP %d — 업데이트 API가 제한되었거나 차단되었을 수 있습니다. 아래 링크에서 직접 다운로드하세요.";
 "update.failure.offline" = "확인 실패: 업데이트 서비스에 접근할 수 없습니다(오프라인 또는 네트워크 제한). 아래 링크에서 직접 다운로드하세요.";
 "update.failure.other" = "확인 실패:";
