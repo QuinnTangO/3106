@@ -16,6 +16,10 @@ All notable user-facing changes are documented in this file.
 
 - **IOSurface UAF 可用性探测**（上一版未发布的改动一并发布）：设置 → 沙箱诊断新增手动探测（spec `05-00-iosurface-uaf-probe`），验证 `IOSurfaceRoot` 注册表的注册 / 注销 / 重复注册状态机能否由用户态完整操控（120 轮）。结果分「可控 / 部分可控 / 不可用 / 服务不可见」四态，并写入诊断报告（含 build 与机型）。探测只读：不进行堆喷、竞态或内核写入，结果只代表 UAF 前置条件成立，不代表可利用。
 
+### Fixed
+
+- **正式包目录层级（2026-11-27 重发）**：首发的 `3106-3.2.11-unsigned.ipa` 打包时缺少 `Payload/3106.app/` 一层，签名工具无法识别、导入即报错。已用同版本源码重新构建并替换 GitHub 与 Gitee 两处 Release 附件；新包 5,984,529 字节，SHA256 `e02084f40c17203d4b9c5062adf26b36214fa981a1881fd60b86f1b33adc9c49`，旧包 `773acb…` 作废。版本号与构建号不变。
+
 ### Verification
 
 - `bash Tests/run_policy_tests.sh`：通过（含 `update.json` 与 Info.plist 的版本 / 构建号一致性校验、四语键集对齐）。

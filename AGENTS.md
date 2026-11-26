@@ -40,6 +40,13 @@
 2. 改代码前确认对应 task 已 `task_update(in_progress)`，完成后 `task_update(completed)`。
 3. 纯只读/答问题不走治理流程。
 
+## 发布（3.2.11 起）
+
+- **GitHub 与 Gitee 必须同时发布**：同一提交、同一 IPA、同一 SHA256。只发一端视为未完成。
+- **应用内更新检查只走 Gitee**：`tangzhanyuan/3106` 的 `update.json` 与 Releases API 是唯一更新链路；GitHub Releases 仅作镜像备份。
+- 发布包必须含 `Payload/3106.app/` 目录层。直接压缩 `.app` 内容或漏掉该层，签名工具会拒绝导入（3.2.11 首发事故）。
+- 一键发布：`bash scripts/release.sh`（构建 → 打包 → 校验 → 更新 `update.json` / `SHA256SUMS.txt` → 双端上传）。
+
 ## 验证
 
 - 改动后必跑 `bash Tests/run_policy_tests.sh`（含键集对齐、格式符校验、策略测试）。

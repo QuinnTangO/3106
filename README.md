@@ -173,7 +173,7 @@
 
 - 正式发布：<https://gitee.com/tangzhanyuan/3106/releases>
 - 更新清单：<https://gitee.com/tangzhanyuan/3106/raw/3106/update.json>
-- 当前版本：`3106-3.2.11-unsigned.ipa` / build 38，SHA256 `773acbb5ed26bf64b0901937a84898a302358408e2b8af5929ac69339ad0eb85`
+- 当前版本：`3106-3.2.11-unsigned.ipa` / build 38，SHA256 `e02084f40c17203d4b9c5062adf26b36214fa981a1881fd60b86f1b33adc9c49`
 - GitHub Releases 仅作 IPA 备份镜像，不参与应用内更新检查。
 
 发布资产为未签名 IPA，需要按上面的签名方式自行签名后安装。

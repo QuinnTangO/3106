@@ -119,7 +119,7 @@ The in-app update check uses **Gitee** (the old GitHub account is suspended; Git
 
 - Releases: <https://gitee.com/tangzhanyuan/3106/releases>
 - Update manifest: <https://gitee.com/tangzhanyuan/3106/raw/3106/update.json>
-- Current build: `3106-3.2.11-unsigned.ipa` / build 38, SHA256 `773acbb5ed26bf64b0901937a84898a302358408e2b8af5929ac69339ad0eb85`
+- Current build: `3106-3.2.11-unsigned.ipa` / build 38, SHA256 `e02084f40c17203d4b9c5062adf26b36214fa981a1881fd60b86f1b33adc9c49`
 - GitHub Releases is an IPA mirror only and is not used by the in-app updater.
 
 ## License
