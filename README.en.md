@@ -18,15 +18,15 @@
 
 | Item | Value |
 | --- | --- |
-| Version | **3.2.8** (stable) |
-| Current release | **v3.2.8** (build 33, 2026-11-20: sandbox access-cache self-heal (fixes unidentified containers / cleaner seeing only itself) plus Settings → Reset Access Cache; region reads RegionInfoFromSysconfig first and shows both keys and the unlock mode; MobileGestalt CacheData slot status and writes for audio/shutter/health/AI toggles; fake-supervision audit and AssetTagInformation; update prompt is Cancel / Update; A10 constant fixed; SHA256 per `dist/SHA256SUMS.txt`) |
-| Previous release | **v3.2.7** (build 26, 2026-11-19: single-page onboarding, Korean, SQLite sidecars, plist date/size guards, A10 + iOS 17 refusal, jailbreak detection, dual regionInfo keys, 15 regions, Wi-Fi transfer, chmod editor, explicit Unlock screen; SHA256 per `dist/SHA256SUMS.txt`) |
+| Version | **3.2.11** (stable, build 38) |
+| Current release | **v3.2.11** (build 38, 2026-11-25: update check fully moved to Gitee (static `update.json` + Releases API, tolerating responses without `html_url`); Settings repository link and all four localizations now point to Gitee; read-only IOSurface UAF availability probe; SHA256 per `dist/SHA256SUMS.txt`) |
+| Previous release | **v3.2.10** (build 37, 2026-11-24: update-check 403 fixes — static `update.json` probe, direct IPA link, API 403 fallback; SHA256 per `dist/SHA256SUMS.txt`) |
 | Supported systems | iOS 17.0–18.7.1 · 26.0–26.6.1 · 26.7–26.7.2 · 27.0–27.2 · 27.3 beta 1 (build-gated, `24C5037i`) |
 | Access backend | kernel / `bad_query` / `worse_query` (selected automatically by OS version) |
 | UI languages | Simplified Chinese · English · Vietnamese · Korean |
 | Signing | iOS 26.7+ / 27.x requires an App Group entitlement |
 | Bundle ID | `com.qingtang.3106` |
-| Repository | <https://github.com/QuinnTang74/3106.git> |
+| Repository | <https://gitee.com/tangzhanyuan/3106> · GitHub mirror <https://github.com/QuinnTangO/3106> |
 
 ## Features
 
@@ -53,6 +53,8 @@
 
 | Version | Highlights |
 | --- | --- |
+| **3.2.11** | Update check fully moved to Gitee (static `update.json` + Releases API, tolerating responses without `html_url`), Settings repository link and all four localizations switched to Gitee, read-only IOSurface UAF availability probe |
+| **3.2.10** | Update-check 403 fixes: static `update.json` probe, direct IPA link, API 403 fallback |
 | **3.2.8** | Sandbox access-cache self-heal (unidentified containers / cleaner seeing only itself), Settings → Reset Access Cache, sysconfig-first region read with both keys shown, CacheData slot status and writes, Media & Health and experimental toggles, fake-supervision audit, AssetTagInformation, Cancel / Update prompt, A10 constant fix |
 | **3.2.7** | Onboarding redone (single page, follows the system language, no replay on overwrite installs), Korean as a fifth language, SQLite restore neutralizes `-wal`/`-shm`, plist dates no longer round silently and oversized files are refused, A10 + iOS 17 kernel chain refused, jailbreak detection, dual `regionInfo` keys fixed, region list 1→15, Wi-Fi HTTP transfer, chmod permission editor, explicit Unlock screen |
 | **3.2.6** | iOS 27 write-failure fix: file edits / copy-paste / replace used to fail with swallowed errors and no attribution — grant chain hardened at four single points (non-fatal lstat, 5-candidate flags with versioned preference + full-walk self-heal, token write probe, real activation probe), failure codes surfaced (browser banner + settings sandbox diagnostics view + one-tap export), permission-denied writes automatically retry once after dropping the token cache and re-granting, LS store 27.3 layout candidates added |
@@ -109,7 +111,16 @@ The IPA is unsigned and must be signed with your own tool (LCSign / Sideloadly /
 
 **iOS 26.7+ / 27.x must keep the App Group entitlement** (Sideloadly drops it; use Impactor or Xcode).
 
-Current build: `3106-3.2.8-unsigned.ipa` / build 33. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
+Current build: `3106-3.2.11-unsigned.ipa` / build 38. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
+
+## Download & update check
+
+The in-app update check uses **Gitee** (the old GitHub account is suspended; GitHub API, raw, and releases are all unavailable):
+
+- Releases: <https://gitee.com/tangzhanyuan/3106/releases>
+- Update manifest: <https://gitee.com/tangzhanyuan/3106/raw/3106/update.json>
+- Current build: `3106-3.2.11-unsigned.ipa` / build 38, SHA256 `773acbb5ed26bf64b0901937a84898a302358408e2b8af5929ac69339ad0eb85`
+- GitHub Releases is an IPA mirror only and is not used by the in-app updater.
 
 ## License
 

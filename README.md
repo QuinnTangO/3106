@@ -18,15 +18,15 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前版本 | **3.2.8**（正式版） |
-| 当前发布 | **v3.2.8**（build 33，2026-11-20：沙箱访问缓存自愈（修复未识别容器/清理只统计自身）+ 设置页“重置访问缓存”；地区改为 RegionInfoFromSysconfig 优先并显示双键与修改模式；MobileGestalt CacheData 槽位读取（音频/快门/健康/AI 开关真实状态与写入）；伪监管残留体检与资产铭牌；更新弹窗改为「取消 / 更新」；A10 常量修正。SHA256 以 `dist/SHA256SUMS.txt` 为准） |
-| 上一版本 | **v3.2.7**（build 26，2026-11-19：单页引导、韩语、SQLite 旁路文件、plist 日期/体积、A10+iOS17 拒绝、越狱检测、regionInfo 双键、区域 15 项、Wi-Fi 互传、chmod、显式 Unlock；SHA256 以 `dist/SHA256SUMS.txt` 为准） |
+| 当前版本 | **3.2.11**（正式版，build 38） |
+| 当前发布 | **v3.2.11**（build 38，2026-11-25：更新检查整体迁到 Gitee（静态 `update.json` + Releases API，兼容 Gitee 无 `html_url` 的响应）；设置页仓库入口与四语文案同步改为 Gitee；新增 IOSurface UAF 可用性只读探测。SHA256 以 `dist/SHA256SUMS.txt` 为准） |
+| 上一版本 | **v3.2.10**（build 37，2026-11-24：更新检查 403 修复：静态 `update.json` 探测、IPA 直链、API 403 兜底；SHA256 以 `dist/SHA256SUMS.txt` 为准） |
 | 支持系统 | iOS 17.0–18.7.1 · 26.0–26.6.1 · 26.7–26.7.2 · 27.0–27.2 · 27.3 beta 1（按 build 号校验，`24C5037i`） |
 | 访问后端 | kernel / `bad_query` / `worse_query`（按系统版本自动选择） |
 | 界面语言 | 简体中文 · English · Tiếng Việt · 한국어 |
 | 签名要求 | iOS 26.7+ / 27.x 需要 App Group entitlement |
 | Bundle ID | `com.qingtang.3106` |
-| 仓库 | <https://github.com/QuinnTang74/3106.git> |
+| 仓库 | <https://gitee.com/tangzhanyuan/3106> · GitHub 镜像 <https://github.com/QuinnTangO/3106> |
 
 ## 功能
 
@@ -61,6 +61,8 @@
 
 | 版本 | 主要内容 |
 | --- | --- |
+| **3.2.11** | 更新检查整体迁到 Gitee（静态 `update.json` + Releases API，兼容无 `html_url` 的响应）；设置页仓库入口与四语文案改为 Gitee；新增 IOSurface UAF 可用性只读探测 |
+| **3.2.10** | 更新检查 403 修复：静态 `update.json` 探测 + IPA 直链 + API 403 兜底 |
 | **3.2.8** | 沙箱访问缓存自愈（未识别容器/清理只统计自身）、设置页“重置访问缓存”、地区 sysconfig 优先与双键显示、CacheData 槽位状态与写入、影像与健康/实验性开关、伪监管体检、资产铭牌、更新弹窗「取消 / 更新」、A10 常量修正 |
 | **3.2.7** | 首次启动重做（单页引导 + 跟随本机语言 + 覆盖安装不再重弹）、韩语第五语言、SQLite 恢复同步处理 `-wal`/`-shm`、plist 日期不再静默舍入与超大文件拒载、A10 + iOS 17 内核链拒绝、越狱环境检测、`regionInfo` 双键修复、区域 1→15、Wi-Fi HTTP 互传、chmod 权限编辑、显式 Unlock 屏 |
 | **3.2.6** | iOS 27 写入失败专项：修复修改/复制粘贴/替换全部失败且错误被吞、无法归因的问题——授权链四处单点加固（lstat 非致命化、flags 5 候选+版本隔离+轮询自愈、token 写探针、真实 probe）、失败码诊断透传（文件页横幅 + 设置页沙盒诊断 + 一键导出）、写遇权限拒绝自动清令牌重授权重试一次、LS 布局表 27.3 候选 |
@@ -163,17 +165,20 @@
 | --- | --- |
 | 无签名构建 | `xcodebuild -project ThreeOneOSSix.xcodeproj -scheme 3106 -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build` |
 | 策略测试 | `bash Tests/run_policy_tests.sh` |
-| 产物目录 | `dist/`，当前文件名 `3106-3.2.8-unsigned.ipa`，校验值以 `dist/SHA256SUMS.txt` 为准 |
+| 产物目录 | `dist/`，当前文件名 `3106-3.2.11-unsigned.ipa`，校验值以 `dist/SHA256SUMS.txt` 为准 |
 
-## 下载
+## 下载与更新检查
 
-正式版发布在 GitHub Releases：
+应用内「检查更新」走 **Gitee**（旧 GitHub 账号已停用，GitHub API / raw / releases 三条链路均不可用）：
 
-<https://github.com/QuinnTang74/3106/releases>
+- 正式发布：<https://gitee.com/tangzhanyuan/3106/releases>
+- 更新清单：<https://gitee.com/tangzhanyuan/3106/raw/3106/update.json>
+- 当前版本：`3106-3.2.11-unsigned.ipa` / build 38，SHA256 `773acbb5ed26bf64b0901937a84898a302358408e2b8af5929ac69339ad0eb85`
+- GitHub Releases 仅作 IPA 备份镜像，不参与应用内更新检查。
 
 发布资产为未签名 IPA，需要按上面的签名方式自行签名后安装。
 
-当前版本：`3106-3.2.10-unsigned.ipa` / build 37。iOS 17/18 启动时会自动运行一次内核链；失败可通过顶部横幅打开 Unlock 页手动重试。升级覆盖安装后不会再重弹引导页。
+iOS 17/18 启动时会自动运行一次内核链；失败可通过顶部横幅打开 Unlock 页手动重试。升级覆盖安装后不会再重弹引导页。
 
 ## 开源协议与商用说明
 
