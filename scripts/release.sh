@@ -89,10 +89,14 @@ cp -R "$APP" "$WORK/Payload/"
 
 # ---- 产物校验 ------------------------------------------------------------
 log "校验 IPA 结构与版本"
-unzip -l "$IPA" | grep -q 'Payload/3106.app/Info.plist' \
+# Do not pipe `unzip -l` into `grep -q`: with `set -o pipefail`, grep exits at
+# the first match, unzip receives SIGPIPE, and the pipeline reports failure
+# even though the entry exists.
+unzip -l "$IPA" > "$WORK/ipa-list.txt"
+grep -q 'Payload/3106.app/Info.plist' "$WORK/ipa-list.txt" \
   || die "IPA 缺少 Payload/3106.app/ 目录层，签名工具会拒绝导入"
 unzip -t "$IPA" >/dev/null || die "IPA zip 完整性校验失败"
-if unzip -l "$IPA" | grep -qiE '__MACOSX|\.DS_Store'; then
+if grep -qiE '__MACOSX|\.DS_Store' "$WORK/ipa-list.txt"; then
   die "IPA 含 __MACOSX/.DS_Store 杂项"
 fi
 rm -rf "$WORK/verify"
