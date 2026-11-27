@@ -22,10 +22,8 @@ All notable user-facing changes are documented in this file.
 
 - **Wi-Fi 互传认证兼容**：Basic Auth 用户名允许留空或大小写不敏感的 `3106`，PIN 仍为恒时比较；解决浏览器留空用户名时反复弹认证。
 - **文件详情广告锁状态**：识别 `.erosion_adlock` 并显示占位状态；应用 `0755`/`0644` 时同步移除占位、恢复读写。
-
-### Fixed
-
 - **自签名环境文件选择无响应**：`MigrationView` / `KeypadThemeView` / `MigrationConfigBackupView` 三处 SwiftUI `.fileImporter` 改为 `UIDocumentPickerViewController` 包装（`FileDocumentPicker`，`asCopy: true`）。
+- **广告锁提示路由**：批量确认与结果提示合并为单一 alert 路由，避免同一视图两个 `.alert` 只生效一个。
 
 ### Verification
 
