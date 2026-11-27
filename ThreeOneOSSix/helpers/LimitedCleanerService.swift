@@ -5,6 +5,21 @@ struct LimitedCleanerUsage: Equatable {
     let cacheBytes: Int64
     let temporaryBytes: Int64
     let removableItemCount: Int
+    /// Directories skipped because they contain `.erosion_adlock`. Their
+    /// contents are deliberately excluded from every byte total.
+    let lockedDirectoryCount: Int
+
+    init(
+        cacheBytes: Int64,
+        temporaryBytes: Int64,
+        removableItemCount: Int,
+        lockedDirectoryCount: Int = 0
+    ) {
+        self.cacheBytes = cacheBytes
+        self.temporaryBytes = temporaryBytes
+        self.removableItemCount = removableItemCount
+        self.lockedDirectoryCount = lockedDirectoryCount
+    }
 
     static let empty = LimitedCleanerUsage(
         cacheBytes: 0,
@@ -22,6 +37,23 @@ struct LimitedCleanerResult: Equatable {
     let after: LimitedCleanerUsage
     let removedItemCount: Int
     let failedItemCount: Int
+    /// Top-level items skipped because their subtree contains a
+    /// `.erosion_adlock` lock directory.
+    let skippedProtectedItemCount: Int
+
+    init(
+        before: LimitedCleanerUsage,
+        after: LimitedCleanerUsage,
+        removedItemCount: Int,
+        failedItemCount: Int,
+        skippedProtectedItemCount: Int = 0
+    ) {
+        self.before = before
+        self.after = after
+        self.removedItemCount = removedItemCount
+        self.failedItemCount = failedItemCount
+        self.skippedProtectedItemCount = skippedProtectedItemCount
+    }
 
     var freedBytes: Int64 {
         max(0, before.totalBytes - after.totalBytes)
@@ -52,6 +84,19 @@ enum LimitedCleanerService {
         let bytes: Int64
         let files: Int
         let budgetExhausted: Bool
+        let lockedDirectories: Int
+
+        init(
+            bytes: Int64,
+            files: Int,
+            budgetExhausted: Bool,
+            lockedDirectories: Int = 0
+        ) {
+            self.bytes = bytes
+            self.files = files
+            self.budgetExhausted = budgetExhausted
+            self.lockedDirectories = lockedDirectories
+        }
     }
 
     static func scan(
@@ -88,7 +133,8 @@ enum LimitedCleanerService {
                     ? cached.cacheBytes : cached.temporaryBytes
                 return BudgetedMeasure(
                     bytes: bytes, files: cached.removableItemCount,
-                    budgetExhausted: false
+                    budgetExhausted: false,
+                    lockedDirectories: cached.lockedDirectoryCount
                 )
             }
 
@@ -108,6 +154,7 @@ enum LimitedCleanerService {
             var files = 0
             var visited = 0
             var exhausted = false
+            var lockedDirectories = 0
             let startedAt = Date()
             guard FileManager.default.fileExists(atPath: url.path),
                   let enumerator = FileManager.default.enumerator(
@@ -122,7 +169,7 @@ enum LimitedCleanerService {
                         return true
                     }
                   ) else {
-                return BudgetedMeasure(bytes: 0, files: 0, budgetExhausted: false)
+                return BudgetedMeasure(bytes: 0, files: 0, budgetExhausted: false, lockedDirectories: 0)
             }
 
             for case let item as URL in enumerator {
@@ -143,6 +190,19 @@ enum LimitedCleanerService {
                     enumerator.skipDescendants()
                     continue
                 }
+                if values?.isDirectory == true {
+                    // A locked ad directory protects its whole subtree from
+                    // measurement; never count bytes the cleaner must skip.
+                    if AdLockSentinel.hasSentinelDirectly(under: item.path) {
+                        enumerator.skipDescendants()
+                        lockedDirectories += 1
+                    }
+                    continue
+                }
+                // The sentinel itself is a 0-byte marker, never a removable item.
+                if item.lastPathComponent == AdLockSentinel.fileName {
+                    continue
+                }
                 guard values?.isRegularFile == true else { continue }
                 bytes += max(0, Int64(values?.fileSize ?? 0))
                 files += 1
@@ -154,10 +214,16 @@ enum LimitedCleanerService {
                     relativePath: relative,
                     bytes: bytes,
                     files: files,
-                    directoryMTime: preWalkMTime
+                    directoryMTime: preWalkMTime,
+                    lockedDirectories: lockedDirectories
                 )
             }
-            return BudgetedMeasure(bytes: bytes, files: files, budgetExhausted: exhausted)
+            return BudgetedMeasure(
+                bytes: bytes,
+                files: files,
+                budgetExhausted: exhausted,
+                lockedDirectories: lockedDirectories
+            )
         }
 
         // Use FileManager enumeration instead of openat(O_NOFOLLOW): apps
@@ -168,7 +234,8 @@ enum LimitedCleanerService {
         return LimitedCleanerUsage(
             cacheBytes: cache.bytes,
             temporaryBytes: temporary.bytes,
-            removableItemCount: cache.files + temporary.files
+            removableItemCount: cache.files + temporary.files,
+            lockedDirectoryCount: cache.lockedDirectories + temporary.lockedDirectories
         )
     }
 
@@ -194,6 +261,7 @@ enum LimitedCleanerService {
         let resolvedRoot = root.resolvingSymlinksInPath().standardizedFileURL
         var removed = 0
         var failed = 0
+        var skipped = 0
 
         // Safety policy pre-flight (CleanerSafetyPolicy): the container root
         // and both planned targets must pass the protected-path blacklist and
@@ -266,6 +334,14 @@ enum LimitedCleanerService {
                     )
                     continue
                 }
+                if child.lastPathComponent == AdLockSentinel.fileName ||
+                   AdLockSentinel.containsLockedDirectory(inSubtree: child.path) {
+                    // Never remove a sentinel, and never let removeItem descend
+                    // into a subtree that contains one.
+                    skipped += 1
+                    log("cleaner: skipped ad-locked subtree \(child.path)")
+                    continue
+                }
                 do {
                     try FileManager.default.removeItem(at: child)
                     removed += 1
@@ -285,7 +361,8 @@ enum LimitedCleanerService {
             before: before,
             after: after,
             removedItemCount: removed,
-            failedItemCount: failed
+            failedItemCount: failed,
+            skippedProtectedItemCount: skipped
         )
     }
 
@@ -372,6 +449,7 @@ enum LimitedCleanerService {
         forEachEntry(in: directoryDescriptor) { name, information in
             switch information.st_mode & S_IFMT {
             case S_IFREG:
+                if name == AdLockSentinel.fileName { return }
                 result.bytes += max(0, Int64(information.st_size))
                 result.itemCount += 1
             case S_IFDIR:
@@ -383,10 +461,16 @@ enum LimitedCleanerService {
                     )
                 }
                 guard childDescriptor >= 0 else { return }
+                if AdLockSentinel.hasSentinel(inDirectoryDescriptor: childDescriptor) {
+                    result.lockedDirectoryCount += 1
+                    close(childDescriptor)
+                    return
+                }
                 let nested = scanDirectory(childDescriptor)
                 close(childDescriptor)
                 result.bytes += nested.bytes
                 result.itemCount += nested.itemCount
+                result.lockedDirectoryCount += nested.lockedDirectoryCount
             default:
                 // Symbolic links, sockets and device nodes are never followed or counted.
                 break
@@ -402,6 +486,10 @@ enum LimitedCleanerService {
         forEachEntry(in: directoryDescriptor) { name, information in
             switch information.st_mode & S_IFMT {
             case S_IFREG:
+                if name == AdLockSentinel.fileName {
+                    summary.skippedProtectedItemCount += 1
+                    return
+                }
                 let result = name.withCString { unlinkat(directoryDescriptor, $0, 0) }
                 if result == 0 {
                     summary.removedItemCount += 1
@@ -420,6 +508,11 @@ enum LimitedCleanerService {
                     if errno != ENOENT && errno != ELOOP {
                         summary.failedItemCount += 1
                     }
+                    return
+                }
+                if AdLockSentinel.hasSentinel(inDirectoryDescriptor: childDescriptor) {
+                    close(childDescriptor)
+                    summary.skippedProtectedItemCount += 1
                     return
                 }
                 removeDirectoryContents(childDescriptor, summary: &summary)
@@ -473,6 +566,7 @@ enum LimitedCleanerService {
 private struct ScanSummary {
     var bytes: Int64
     var itemCount: Int
+    var lockedDirectoryCount: Int = 0
 
     static let empty = ScanSummary(bytes: 0, itemCount: 0)
 }
@@ -480,4 +574,5 @@ private struct ScanSummary {
 private struct RemovalSummary {
     var removedItemCount = 0
     var failedItemCount = 0
+    var skippedProtectedItemCount = 0
 }

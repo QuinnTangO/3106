@@ -63,14 +63,47 @@ enum WiFiSharePolicy {
         return "Basic " + Data(raw.utf8).base64EncodedString()
     }
 
-    /// Constant-time over the header: comparing with `==` on a secret lets a
-    /// local attacker time the response and recover the PIN digit by digit.
+    /// Constant-time over the header and over the decoded PIN. Comparing with
+    /// `==` on a secret lets a local attacker time the response and recover
+    /// the PIN digit by digit. The username is not a secret, so it is matched
+    /// case-insensitively (and may be left blank, which some browser password
+    /// managers send).
     static func isAuthorized(header: String?, pin: String) -> Bool {
-        guard let header else { return false }
+        guard !pin.isEmpty, let header else { return false }
+        let trimmed = header.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Fast path: the exact token shown by the app.
         let expected = expectedAuthorization(pin: pin)
-        guard header.count == expected.count else { return false }
+        if constantTimeEqual(trimmed, expected) {
+            return true
+        }
+
+        guard trimmed.count >= 6,
+              trimmed.prefix(5).caseInsensitiveCompare("Basic") == .orderedSame,
+              trimmed.dropFirst(5).first == " " else {
+            return false
+        }
+        let encoded = String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = Data(base64Encoded: encoded),
+              let decoded = String(data: data, encoding: .utf8),
+              let separator = decoded.firstIndex(of: ":") else {
+            return false
+        }
+        let user = String(decoded[decoded.startIndex..<separator])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let password = String(decoded[decoded.index(after: separator)...])
+        guard user.isEmpty || user.caseInsensitiveCompare(username) == .orderedSame else {
+            return false
+        }
+        return constantTimeEqual(password, pin)
+    }
+
+    private static func constantTimeEqual(_ lhs: String, _ rhs: String) -> Bool {
+        let left = Array(lhs.utf8)
+        let right = Array(rhs.utf8)
+        guard left.count == right.count else { return false }
         var diff: UInt8 = 0
-        for (a, b) in zip(header.utf8, expected.utf8) {
+        for (a, b) in zip(left, right) {
             diff |= a ^ b
         }
         return diff == 0

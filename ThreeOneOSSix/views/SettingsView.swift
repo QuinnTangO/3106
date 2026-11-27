@@ -246,12 +246,12 @@ struct SettingsView: View {
                 }
 
                 Section(language.text("settings.github")) {
-                    if let destination = URL(string: "https://gitee.com/tangzhanyuan/3106") {
+                    if let destination = URL(string: "https://github.com/QuinnTangO/3106") {
                         Link(destination: destination) {
                             HStack(spacing: 12) {
-                                Label("Gitee", systemImage: "link")
+                                Label("GitHub", systemImage: "link")
                                 Spacer()
-                                Text("tangzhanyuan/3106")
+                                Text("QuinnTangO/3106")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

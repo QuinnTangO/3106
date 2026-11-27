@@ -811,6 +811,7 @@ struct CleanerView: View {
             var freedBytes: Int64 = 0
             var removedItems = 0
             var failedItems = 0
+            var skippedProtectedItems = 0
             var unavailableApps = 0
             let totalSelected = selectedRecords.count
             var processedIndex = 0
@@ -857,6 +858,7 @@ struct CleanerView: View {
                     freedBytes += result.freedBytes
                     removedItems += result.removedItemCount
                     failedItems += result.failedItemCount
+                    skippedProtectedItems += result.skippedProtectedItemCount
                     log(
                         "cleaner: cleaned \(record.app.bundleID) " +
                             "freed=\(result.freedBytes) removed=\(result.removedItemCount) " +
@@ -868,12 +870,18 @@ struct CleanerView: View {
                 }
             }
 
-            let resultMessage = language.text(
+            var resultMessage = language.text(
                 "cleaner.result_message",
                 sizeText(freedBytes),
                 Int64(removedItems),
                 Int64(failedItems + unavailableApps)
             )
+            if skippedProtectedItems > 0 {
+                resultMessage += "\n" + language.text(
+                    "cleaner.result_skipped",
+                    Int64(skippedProtectedItems)
+                )
+            }
             let cleanedCount = selectedRecords.count - unavailableApps
             let historyEntry = CleanerHistoryEntry(
                 cleanedAppCount: max(0, cleanedCount),

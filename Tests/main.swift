@@ -2414,6 +2414,88 @@ if let adTestDefaults = UserDefaults(suiteName: adTestSuite) {
     expect(false, "test defaults suite is available")
 }
 
+// MARK: - Battery native-info policy (spec 06-00)
+
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone15,4"),
+       "iPhone 15 reports native battery info")
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone15,5"),
+       "iPhone 15 Plus reports native battery info")
+expectFalse(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone15,2"),
+            "iPhone 14 Pro is not treated as native")
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone16,1"),
+       "iPhone 15 Pro reports native battery info")
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone19,1"),
+       "future iPhone models stay native")
+expectFalse(BatteryNativeInfoPolicy.isNative(machineModel: "iPhone14,7"),
+            "older iPhone models are not native")
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPad14,8"),
+       "modern iPad is native")
+expect(BatteryNativeInfoPolicy.isNative(machineModel: "iPad16,3"),
+       "iPad 16,x is native")
+expectFalse(BatteryNativeInfoPolicy.isNative(machineModel: "iPad13,4"),
+            "older iPad is not native")
+expectFalse(BatteryNativeInfoPolicy.isNative(machineModel: ""),
+            "an empty machine string is not native")
+
+// MARK: - Wi-Fi username compatibility (spec 06-00)
+
+let adWifiPIN = "654321"
+func adBasicHeader(user: String, password: String) -> String {
+    "Basic " + Data("\(user):\(password)".utf8).base64EncodedString()
+}
+expect(WiFiSharePolicy.isAuthorized(
+    header: WiFiSharePolicy.expectedAuthorization(pin: adWifiPIN),
+    pin: adWifiPIN
+), "the canonical token still authenticates")
+expect(WiFiSharePolicy.isAuthorized(
+    header: adBasicHeader(user: WiFiSharePolicy.username, password: adWifiPIN),
+    pin: adWifiPIN
+), "the documented username authenticates")
+expect(WiFiSharePolicy.isAuthorized(
+    header: adBasicHeader(user: WiFiSharePolicy.username.uppercased(), password: adWifiPIN),
+    pin: adWifiPIN
+), "username matching is case-insensitive")
+expect(WiFiSharePolicy.isAuthorized(
+    header: adBasicHeader(user: "", password: adWifiPIN),
+    pin: adWifiPIN
+), "an empty username is accepted")
+expectFalse(WiFiSharePolicy.isAuthorized(
+    header: adBasicHeader(user: "someone", password: adWifiPIN),
+    pin: adWifiPIN
+), "a different username is rejected")
+expectFalse(WiFiSharePolicy.isAuthorized(
+    header: adBasicHeader(user: WiFiSharePolicy.username, password: "000000"),
+    pin: adWifiPIN
+), "a wrong PIN is rejected")
+expectFalse(WiFiSharePolicy.isAuthorized(header: nil, pin: adWifiPIN),
+            "a missing header is rejected")
+expectFalse(WiFiSharePolicy.isAuthorized(header: adBasicHeader(user: "", password: ""),
+                                         pin: ""),
+            "an empty PIN is rejected")
+
+// MARK: - Sentinel detection (spec 06-00)
+
+let adSentinelRoot = FileManager.default.temporaryDirectory
+    .appendingPathComponent("adlock-sentinel-\(UUID().uuidString)", isDirectory: true)
+let adSentinelDirectory = adSentinelRoot
+    .appendingPathComponent("Library/Caches/SplashAd", isDirectory: true)
+try? FileManager.default.createDirectory(
+    at: adSentinelDirectory,
+    withIntermediateDirectories: true
+)
+expectFalse(AdLockSentinel.isLockedDirectory(atPath: adSentinelDirectory.path),
+            "a directory without a sentinel is not locked")
+expectFalse(AdLockSentinel.containsLockedDirectory(inSubtree: adSentinelRoot.path),
+            "a subtree without a sentinel is not protected")
+let adSentinelPath = adSentinelDirectory
+    .appendingPathComponent(AdLockCatalog.sentinelFileName)
+FileManager.default.createFile(atPath: adSentinelPath.path, contents: Data())
+expect(AdLockSentinel.isLockedDirectory(atPath: adSentinelDirectory.path),
+        "a direct sentinel marks the directory locked")
+expect(AdLockSentinel.containsLockedDirectory(inSubtree: adSentinelRoot.path),
+        "a nested sentinel protects the whole subtree")
+try? FileManager.default.removeItem(at: adSentinelRoot)
+
 if failures == 0 {
     print("PASS: \(checks) policy checks")
     exit(0)

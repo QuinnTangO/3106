@@ -51,6 +51,14 @@
 		3105D242 /* SQLiteSidecarPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D142; };
 		3105D243 /* PlistDatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D143; };
 		3105D244 /* PermissionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D144; };
+		3106AD11 /* AdLockCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD01; };
+		3106AD12 /* AdLockPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD02; };
+		3106AD13 /* AdLockStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD03; };
+		3106AD14 /* AdLockService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD04; };
+		3106AD15 /* AdLockSentinel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD05; };
+		3106AD16 /* BatteryNativeInfoPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD06; };
+		3106AD17 /* AdCacheBlockerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD07; };
+		3106AD18 /* AdLockSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3106AD08; };
 		3105D245 /* DeviceCPU.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D145; };
 		3105D246 /* JailbreakDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D146; };
 		3105D247 /* RegionKeyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D147; };
@@ -251,6 +259,14 @@
 		3105D142 /* SQLiteSidecarPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteSidecarPolicy.swift; sourceTree = "<group>"; };
 		3105D143 /* PlistDatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlistDatePolicy.swift; sourceTree = "<group>"; };
 		3105D144 /* PermissionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionPolicy.swift; sourceTree = "<group>"; };
+		3106AD01 /* AdLockCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockCatalog.swift; sourceTree = "<group>"; };
+		3106AD02 /* AdLockPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockPolicy.swift; sourceTree = "<group>"; };
+		3106AD03 /* AdLockStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockStore.swift; sourceTree = "<group>"; };
+		3106AD04 /* AdLockService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockService.swift; sourceTree = "<group>"; };
+		3106AD05 /* AdLockSentinel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockSentinel.swift; sourceTree = "<group>"; };
+		3106AD06 /* BatteryNativeInfoPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryNativeInfoPolicy.swift; sourceTree = "<group>"; };
+		3106AD07 /* AdCacheBlockerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdCacheBlockerView.swift; sourceTree = "<group>"; };
+		3106AD08 /* AdLockSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdLockSupportViews.swift; sourceTree = "<group>"; };
 		3105D145 /* DeviceCPU.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCPU.swift; sourceTree = "<group>"; };
 		3105D146 /* JailbreakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JailbreakDetector.swift; sourceTree = "<group>"; };
 		3105D147 /* RegionKeyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionKeyPolicy.swift; sourceTree = "<group>"; };
@@ -464,6 +480,8 @@
 				3105B122 /* PatchProjectEditorView.swift */,
 				3105C102 /* FolderPatchSelectionView.swift */,
 				3105E101 /* CleanerView.swift */,
+				3106AD07 /* AdCacheBlockerView.swift */,
+				3106AD08 /* AdLockSupportViews.swift */,
 				3105F106 /* WallpaperLabView.swift */,
 				3105E106 /* BackupTabView.swift */,
 				3105E108 /* RiskConfirmationView.swift */,
@@ -531,6 +549,12 @@
 				3105D142 /* SQLiteSidecarPolicy.swift */,
 				3105D143 /* PlistDatePolicy.swift */,
 				3105D144 /* PermissionPolicy.swift */,
+				3106AD01 /* AdLockCatalog.swift */,
+				3106AD02 /* AdLockPolicy.swift */,
+				3106AD03 /* AdLockStore.swift */,
+				3106AD04 /* AdLockService.swift */,
+				3106AD05 /* AdLockSentinel.swift */,
+				3106AD06 /* BatteryNativeInfoPolicy.swift */,
 				3105D145 /* DeviceCPU.swift */,
 				3105D146 /* JailbreakDetector.swift */,
 				3105D147 /* RegionKeyPolicy.swift */,
@@ -726,6 +750,8 @@
 				3106W920,
 				3106W923,
 				3106W925,
+				3106AD11, 3106AD12, 3106AD13, 3106AD14,
+				3106AD15, 3106AD16, 3106AD17, 3106AD18,
 				3105A210, 3105A220, 3105A221, 3105A222, 3105A223,
 				3105A224, 3105A225,
 				3106C0D3, 3106C0D5,
@@ -904,7 +930,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = "ThreeOneOSSix/ThreeOneOSSix.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -920,7 +946,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.2.11;
+				MARKETING_VERSION = 3.3.0;
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_BUNDLE_IDENTIFIER = com.qingtang.3106;
 				PRODUCT_NAME = 3106;
@@ -938,7 +964,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = "ThreeOneOSSix/ThreeOneOSSix.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -954,7 +980,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.2.11;
+				MARKETING_VERSION = 3.3.0;
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_BUNDLE_IDENTIFIER = com.qingtang.3106;
 				PRODUCT_NAME = 3106;

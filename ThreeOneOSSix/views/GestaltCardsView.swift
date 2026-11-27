@@ -34,6 +34,9 @@ struct GestaltCardsView: View {
         /// Device-specific factory value (GestaltX #102/#98): the toggle is
         /// replaced by keep / restore-original / remove-key actions.
         case preserveOnly
+        /// Hardware natively exposes the legacy battery information; the
+        /// preset is locked off so it cannot shadow the system value.
+        case nativeHardwareInfo
     }
 
     var body: some View {
@@ -532,6 +535,11 @@ struct GestaltCardsView: View {
                         .font(.caption2)
                         .foregroundStyle(.blue)
                         .lineLimit(3)
+                case .nativeHardwareInfo:
+                    Label(language.text("gestalt.cards.lock_native_battery"), systemImage: "battery.100percent")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                        .lineLimit(3)
                 case .none:
                     if preset.requiresRiskConfirmation {
                         Label(language.text("gestalt.cards.high_risk_note"), systemImage: "exclamationmark.triangle")
@@ -542,6 +550,19 @@ struct GestaltCardsView: View {
                     // Medium-risk rows keep an inline ORANGE ⓘ between title
                     // and toggle (screenshot parity); tapping it expands the
                     // full detail text below the row.
+                }
+                if lock == nil,
+                   preset.id == "legacyBattery",
+                   BatteryNativeInfoPolicy.isNative(
+                       machineModel: currentOriginalMachineName()
+                   ) {
+                    Label(
+                        language.text("gestalt.cards.native_battery_disable_hint"),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(3)
                 }
                 // Staged-but-unapplied marker.
                 if let stagedOn, stagedOn != deviceOn {
@@ -708,6 +729,12 @@ struct GestaltCardsView: View {
                     locks[preset.id] = .preserveOnly
                 } else if evaluation.applicability[preset.id] != true {
                     locks[preset.id] = .notApplicable
+                } else if preset.id == "legacyBattery",
+                          evaluation.states[preset.id] != true,
+                          BatteryNativeInfoPolicy.isNative(
+                              machineModel: currentOriginalMachineName()
+                          ) {
+                    locks[preset.id] = .nativeHardwareInfo
                 } else if preset.factoryBaselineProtected,
                           evaluation.states[preset.id] == false {
                     locks[preset.id] = .factoryProtected

@@ -12,9 +12,22 @@ enum CleanerMeasureCache {
         var directoryMTime: Date
         var bytes: Int64
         var files: Int
+        var lockedDirectories: Int
+
+        init(
+            directoryMTime: Date,
+            bytes: Int64,
+            files: Int,
+            lockedDirectories: Int = 0
+        ) {
+            self.directoryMTime = directoryMTime
+            self.bytes = bytes
+            self.files = files
+            self.lockedDirectories = lockedDirectories
+        }
     }
 
-    private static let fileName = "cleaner-measure-cache.plist"
+    private static let fileName = "cleaner-measure-cache-v2.plist"
     private static let queue = DispatchQueue(label: "cleaner.measure.cache")
     private static var cachedStore: [String: [String: Entry]]?
 
@@ -43,7 +56,12 @@ enum CleanerMeasureCache {
                     let bytes = raw["bytes"] as? Int64,
                     let files = raw["files"] as? Int
                 else { continue }
-                entries[relative] = Entry(directoryMTime: mtime, bytes: bytes, files: files)
+                entries[relative] = Entry(
+                    directoryMTime: mtime,
+                    bytes: bytes,
+                    files: files,
+                    lockedDirectories: raw["lockedDirectories"] as? Int ?? 0
+                )
             }
             decoded[container] = entries
         }
@@ -58,6 +76,7 @@ enum CleanerMeasureCache {
                     "mtime": entry.directoryMTime,
                     "bytes": entry.bytes,
                     "files": entry.files,
+                    "lockedDirectories": entry.lockedDirectories,
                 ] as [String: Any]
             }
         }
@@ -103,7 +122,8 @@ enum CleanerMeasureCache {
             return LimitedCleanerUsage(
                 cacheBytes: cacheBytes,
                 temporaryBytes: tmpBytes,
-                removableItemCount: entry.files
+                removableItemCount: entry.files,
+                lockedDirectoryCount: entry.lockedDirectories
             )
         }
     }
@@ -113,14 +133,18 @@ enum CleanerMeasureCache {
         relativePath: String,
         bytes: Int64,
         files: Int,
-        directoryMTime preWalkMTime: Date?
+        directoryMTime preWalkMTime: Date?,
+        lockedDirectories: Int = 0
     ) {
         guard let preWalkMTime else { return }
         queue.sync {
             var store = loadStore()
             var relatives = store[containerPath] ?? [:]
             relatives[relativePath] = Entry(
-                directoryMTime: preWalkMTime, bytes: bytes, files: files
+                directoryMTime: preWalkMTime,
+                bytes: bytes,
+                files: files,
+                lockedDirectories: lockedDirectories
             )
             store[containerPath] = relatives
             cachedStore = store

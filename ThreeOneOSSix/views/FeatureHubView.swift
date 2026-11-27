@@ -214,6 +214,16 @@ struct FeatureHubView: View {
                     }
 
                     NavigationLink {
+                        AdCacheBlockerView()
+                    } label: {
+                        card(
+                            "home.card.adlock",
+                            detail: "home.card.adlock_detail",
+                            icon: "megaphone.fill"
+                        )
+                    }
+
+                    NavigationLink {
                         AppSaveBackupView()
                     } label: {
                         card(

@@ -88,7 +88,10 @@ struct WiFiShareView: View {
         } header: {
             Label(language.text("wifishare.credentials"), systemImage: "key")
         } footer: {
-            Text(language.text("wifishare.pin_footer"))
+            Text(
+                language.text("wifishare.pin_footer") + "\n" +
+                    language.text("wifishare.username_hint")
+            )
         }
     }
 

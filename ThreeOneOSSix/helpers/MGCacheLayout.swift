@@ -1077,7 +1077,7 @@ final class MGCacheDataCoordinator {
 /// The factory machine identifier. A spoofed ProductType must not change
 /// which layout the coordinator attributes the user's own backup to, so the
 /// saved original wins when it exists.
-private func currentOriginalMachineName() -> String {
+func currentOriginalMachineName() -> String {
     if let saved = UserDefaults.standard.string(forKey: "ogMachineName"), !saved.isEmpty {
         return saved
     }

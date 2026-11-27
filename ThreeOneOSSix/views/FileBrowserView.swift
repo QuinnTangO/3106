@@ -30,8 +30,10 @@ struct FileBrowserView: View {
     let bundleID: String?
     let isRoot: Bool
     let readOnly: Bool
+    let highlightPath: String?
     private let filesTabSession: Binding<FilesTabSession>?
     @State private var currentPath: String
+    @State private var highlightedEntryID: String?
     @State private var entries: [FileEntry] = []
     @State private var fileSearchText = ""
     @State private var isLoadingEntries = true
@@ -94,6 +96,7 @@ struct FileBrowserView: View {
         title: String,
         bundleID: String? = nil,
         readOnly: Bool = false,
+        highlightPath: String? = nil,
         filesTabSession: Binding<FilesTabSession>? = nil
     ) {
         self.containerPath = containerPath
@@ -101,6 +104,7 @@ struct FileBrowserView: View {
         self.bundleID = bundleID
         self.isRoot = true
         self.readOnly = readOnly
+        self.highlightPath = highlightPath
         self.filesTabSession = filesTabSession
         _currentPath = State(initialValue: containerPath)
     }
@@ -113,10 +117,12 @@ struct FileBrowserView: View {
                 clearLabel: language.text("common.clear")
             )
             Divider()
+            ScrollViewReader { proxy in
             List {
                 Section {
                     ForEach(filteredEntries) { entry in
                         fileRow(entry)
+                            .id(entry.id)
                     }
                 } header: {
                     Text(language.text("browser.items_count", Int64(filteredEntries.count)))
@@ -144,6 +150,10 @@ struct FileBrowserView: View {
                 }
                 .transition(.opacity)
                 .animation(interfaceAnimation, value: overlayState)
+            }
+            .onChange(of: entries.count) { _ in
+                scheduleHighlight(proxy)
+            }
             }
         }
         .navigationTitle(currentPath == containerPath ? title : (currentPath as NSString).lastPathComponent)
@@ -462,6 +472,7 @@ struct FileBrowserView: View {
             }
             .buttonStyle(.plain)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
+            .listRowBackground(rowBackground(entry))
         } else if entry.isDirectory {
             NavigationLink(
                 value: FileBrowserDestination(
@@ -474,6 +485,7 @@ struct FileBrowserView: View {
             ) {
                 FileEntryRow(entry: entry, language: language, selectionState: nil)
             }
+            .listRowBackground(rowBackground(entry))
             .contextMenu { fileActions(for: entry) }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if !readOnly {
@@ -503,7 +515,98 @@ struct FileBrowserView: View {
             }
             .accessibilityHint(language.text("browser.file_actions_hint"))
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
+            .listRowBackground(rowBackground(entry))
         }
+    }
+
+    private func rowBackground(_ entry: FileEntry) -> Color {
+        highlightedEntryID == entry.id
+            ? AppTheme.accent.opacity(0.16)
+            : Color(uiColor: .secondarySystemGroupedBackground)
+    }
+
+    private func scheduleHighlight(_ proxy: ScrollViewProxy) {
+        guard let highlightPath else { return }
+        let canonical = AdLockPolicy.canonicalVarPath(highlightPath)
+        guard let target = entries.first(where: {
+            AdLockPolicy.canonicalVarPath($0.path) == canonical
+        }) else {
+            return
+        }
+        highlightedEntryID = target.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(target.id, anchor: .center)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            guard highlightedEntryID == target.id else { return }
+            withAnimation(.easeOut(duration: 0.3)) {
+                highlightedEntryID = nil
+            }
+        }
+    }
+
+    private func addAdWatch(_ entry: FileEntry) {
+        let owner = (try? FileManager.default.attributesOfItem(
+            atPath: entry.path
+        )[.ownerAccountName] as? String) ?? nil
+        let result = AdLockCustomWatchStore.shared.addValidatedRule(
+            rawPath: entry.path,
+            isDirectory: entry.isDirectory,
+            ownerAccountName: owner,
+            isSymbolicLink: false,
+            selfBundleID: Bundle.main.bundleIdentifier ?? "",
+            selfAppGroupID: SandboxAccess.appGroup
+        )
+        switch result {
+        case .success:
+            operationNotice = FileReplacementNotice(
+                title: language.text("browser.adlock.added_title"),
+                message: entry.path
+            )
+        case .failure(let failure):
+            operationNotice = FileReplacementNotice(
+                title: language.text("browser.adlock.error_title"),
+                message: language.text("adlock.error.\(failure.rawValue)")
+            )
+        }
+    }
+
+    private func removeAdWatch(_ entry: FileEntry) {
+        AdLockCustomWatchStore.shared.remove(fullPath: entry.path)
+        operationNotice = FileReplacementNotice(
+            title: language.text("browser.adlock.removed_title"),
+            message: entry.path
+        )
+    }
+
+    private func addAdWhitelist(_ entry: FileEntry) {
+        let result = AdLockWhitelistStore.shared.addPathRule(
+            rawPath: entry.path,
+            selfBundleID: Bundle.main.bundleIdentifier ?? "",
+            selfAppGroupID: SandboxAccess.appGroup
+        )
+        switch result {
+        case .success:
+            operationNotice = FileReplacementNotice(
+                title: language.text("browser.adlock.whitelist_added_title"),
+                message: entry.path
+            )
+        case .failure(let failure):
+            operationNotice = FileReplacementNotice(
+                title: language.text("browser.adlock.error_title"),
+                message: language.text("adlock.error.\(failure.rawValue)")
+            )
+        }
+    }
+
+    private func removeAdWhitelist(_ entry: FileEntry) {
+        AdLockWhitelistStore.shared.removeExactPath(entry.path)
+        operationNotice = FileReplacementNotice(
+            title: language.text("browser.adlock.whitelist_removed_title"),
+            message: entry.path
+        )
     }
 
     @ViewBuilder
@@ -568,6 +671,34 @@ struct FileBrowserView: View {
                     language.text("backup.create_manual"),
                     systemImage: "externaldrive.badge.plus"
                 )
+            }
+        }
+        Divider()
+        if AdLockCustomWatchStore.shared.contains(url: URL(fileURLWithPath: entry.path)) {
+            Button {
+                removeAdWatch(entry)
+            } label: {
+                Label(language.text("browser.adlock.remove_custom"), systemImage: "scope")
+            }
+        } else if entry.isDirectory ||
+                    AdLockPolicy.isAdConfigFile(name: entry.name) {
+            Button {
+                addAdWatch(entry)
+            } label: {
+                Label(language.text("browser.adlock.add_custom"), systemImage: "scope")
+            }
+        }
+        if AdLockWhitelistStore.shared.isPathWhitelisted(entry.path) {
+            Button {
+                removeAdWhitelist(entry)
+            } label: {
+                Label(language.text("browser.adlock.remove_whitelist"), systemImage: "shield.slash")
+            }
+        } else {
+            Button {
+                addAdWhitelist(entry)
+            } label: {
+                Label(language.text("browser.adlock.add_whitelist"), systemImage: "checkmark.shield")
             }
         }
         if !readOnly {
@@ -1946,6 +2077,7 @@ extension FileBrowserView {
         title: String,
         bundleID: String?,
         readOnly: Bool = false,
+        highlightPath: String? = nil,
         filesTabSession: Binding<FilesTabSession>? = nil
     ) {
         self.containerPath = containerPath
@@ -1953,6 +2085,7 @@ extension FileBrowserView {
         self.bundleID = bundleID
         self.isRoot = false
         self.readOnly = readOnly
+        self.highlightPath = highlightPath
         self.filesTabSession = filesTabSession
         _currentPath = State(initialValue: startPath)
     }

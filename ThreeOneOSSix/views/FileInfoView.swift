@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Darwin
 
 struct FileInfoView: View {
     @Environment(\.appLanguage) private var language
@@ -10,6 +11,8 @@ struct FileInfoView: View {
     @State private var values: [InfoRow] = []
     @State private var mode: Int?
     @State private var isSymbolicLink = false
+    @State private var isDirectory = false
+    @State private var hasAdLockSentinel = false
     @State private var isApplying = false
     @State private var notice: Notice?
 
@@ -77,11 +80,20 @@ struct FileInfoView: View {
                 .font(.footnote.monospaced())
                 .textSelection(.enabled)
             }
+            if hasAdLockSentinel {
+                LabeledContent(language.text("fileinfo.adlock.status")) {
+                    Label(language.text("fileinfo.adlock.locked"), systemImage: "lock.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+            }
         } header: {
             Text(language.text("fileinfo.section.permissions"))
         } footer: {
             if isSymbolicLink {
                 Text(language.text("fileinfo.permissions.symlink"))
+            } else if hasAdLockSentinel {
+                Text(language.text("fileinfo.adlock.footer"))
             } else if PermissionPolicy.isReadOnly(mode) {
                 // The interesting state, not just a static caption: a read-only
                 // file is exactly what a locked-down app container looks like.
@@ -179,10 +191,19 @@ struct FileInfoView: View {
                 }
 
                 let isLink = resourceValues.isSymbolicLink == true
+                let directory = resourceValues.isDirectory == true
+                let sentinelPath = (path as NSString)
+                    .appendingPathComponent(AdLockCatalog.sentinelFileName)
+                var sentinelStatus = stat()
+                let sentinel = directory &&
+                    lstat(sentinelPath, &sentinelStatus) == 0 &&
+                    (sentinelStatus.st_mode & S_IFMT) == S_IFREG
                 DispatchQueue.main.async {
                     values = rows
                     mode = permissions
                     isSymbolicLink = isLink
+                    isDirectory = directory
+                    hasAdLockSentinel = sentinel
                     isLoading = false
                 }
             } catch {
@@ -206,6 +227,8 @@ struct FileInfoView: View {
         isApplying = true
         let path = path
         let targetMode = preset
+        let hadSentinel = hasAdLockSentinel
+        let directoryTarget = isDirectory
 
         DispatchQueue.global(qos: .userInitiated).async {
             do {
@@ -225,11 +248,23 @@ struct FileInfoView: View {
                 )
 
                 let parent = (path as NSString).deletingLastPathComponent
+                var sentinelRemoved = false
                 try SandboxAccess.withGrant(directory: parent, writable: true) {
                     try FileManager.default.setAttributes(
                         [.posixPermissions: NSNumber(value: targetMode & 0o777)],
                         ofItemAtPath: path
                     )
+                    if directoryTarget &&
+                        hadSentinel &&
+                        (targetMode & 0o222) != 0 {
+                        let sentinelPath = (path as NSString)
+                            .appendingPathComponent(AdLockCatalog.sentinelFileName)
+                        if unlink(sentinelPath) == 0 || errno == ENOENT {
+                            sentinelRemoved = true
+                        } else {
+                            throw PermissionEditError.sentinelRemovalFailed
+                        }
+                    }
                 }
 
                 // Read back: setAttributes returning cleanly does not prove the
@@ -247,6 +282,7 @@ struct FileInfoView: View {
                 DispatchQueue.main.async {
                     isApplying = false
                     mode = applied
+                    if sentinelRemoved { hasAdLockSentinel = false }
                     values = values.map { row in
                         row.title == language.text("fileinfo.permissions")
                             ? InfoRow(title: row.title, value: PermissionPolicy.octalString(applied))
@@ -254,10 +290,12 @@ struct FileInfoView: View {
                     }
                     notice = Notice(
                         title: language.text("fileinfo.permissions.applied_title"),
-                        message: language.text(
-                            "fileinfo.permissions.applied_message",
-                            PermissionPolicy.octalString(applied)
-                        )
+                        message: sentinelRemoved
+                            ? language.text("fileinfo.adlock.restored_message", PermissionPolicy.octalString(applied))
+                            : language.text(
+                                "fileinfo.permissions.applied_message",
+                                PermissionPolicy.octalString(applied)
+                            )
                     )
                 }
             } catch {
@@ -274,6 +312,9 @@ struct FileInfoView: View {
 
     private func localizedDescription(of error: Error) -> String {
         if let edit = error as? PermissionEditError {
+            if case .sentinelRemovalFailed = edit {
+                return language.text("fileinfo.adlock.remove_failed")
+            }
             return edit.errorDescription ?? String(describing: error)
         }
         return language.errorText(error)
@@ -284,6 +325,7 @@ private enum PermissionEditError: Error, LocalizedError {
     case missing
     case symbolicLink
     case verifyFailed(expected: String, actual: String)
+    case sentinelRemovalFailed
 
     var errorDescription: String? {
         switch self {
@@ -294,6 +336,8 @@ private enum PermissionEditError: Error, LocalizedError {
                 + "modify the file they point at."
         case .verifyFailed(let expected, let actual):
             return "The mode did not stick: asked for \(expected), found \(actual)."
+        case .sentinelRemovalFailed:
+            return "The ad-lock sentinel could not be removed."
         }
     }
 }
