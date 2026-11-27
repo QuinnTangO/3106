@@ -34,10 +34,19 @@ struct MigrationConfigBackupView: View {
                 exportPackage(from: source)
             }
         }
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: [UTType(filenameExtension: MigrationConfigBackupService.packageExtension) ?? .data],
-                      allowsMultipleSelection: false) { result in
-            importPackage(result)
+        .sheet(isPresented: $showImporter) {
+            FileDocumentPicker(
+                allowedContentTypes: [
+                    UTType(filenameExtension: MigrationConfigBackupService.packageExtension) ?? .data
+                ],
+                copiesSelectedDocument: true,
+                allowsMultipleSelection: false,
+                onSelection: { result in
+                    showImporter = false
+                    importPackage(result)
+                },
+                onCancel: { showImporter = false }
+            )
         }
         .sheet(isPresented: $showShare) {
             if let url = exportURL {

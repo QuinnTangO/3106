@@ -96,12 +96,17 @@ struct KeypadThemeView: View {
         .navigationTitle(language.text("keypad.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [.image],
-            allowsMultipleSelection: false
-        ) { result in
-            importImage(result)
+        .sheet(isPresented: $showImporter) {
+            FileDocumentPicker(
+                allowedContentTypes: [.image],
+                copiesSelectedDocument: true,
+                allowsMultipleSelection: false,
+                onSelection: { result in
+                    showImporter = false
+                    importImage(result)
+                },
+                onCancel: { showImporter = false }
+            )
         }
         .alert(language.text("keypad.apply_confirm_title"), isPresented: $showApplyConfirmation) {
             Button(language.text("keypad.apply"), role: .destructive) {

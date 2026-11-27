@@ -14,6 +14,7 @@ struct AdLockItem: Identifiable, Hashable, Sendable {
     let cachedBytes: Int64
     let hasSentinel: Bool
     let isWhitelisted: Bool
+    let isPathWhitelisted: Bool
     let isContainerWhitelisted: Bool
 
     var isLockedReadOnly: Bool {
@@ -175,9 +176,7 @@ enum AdLockService {
                 selfBundleID: selfBundleID,
                 selfAppGroupID: selfAppGroupID
             ) {
-                if !entry.items.isEmpty {
-                    entries.append(entry)
-                }
+                entries.append(entry)
             } else {
                 denied += 1
             }
@@ -485,6 +484,7 @@ enum AdLockService {
             cachedBytes: bytes,
             hasSentinel: hasSentinel,
             isWhitelisted: isContainerWhitelisted || pathWhitelisted,
+            isPathWhitelisted: pathWhitelisted,
             isContainerWhitelisted: isContainerWhitelisted
         )
     }

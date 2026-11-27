@@ -47,17 +47,26 @@ struct MigrationView: View {
                 MigrationDirectorySelectView(flow: flow)
             }
         }
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: [UTType(filenameExtension: MigrationConfigBackupService.packageExtension) ?? .data],
-                      allowsMultipleSelection: false) { result in
-            do {
-                guard let url = try result.get().first else { return }
-                let set = try MigrationConfigBackupService.importPackage(at: url)
-                taskCenter.refreshStoredSets()
-                log("migration: config package imported (\(set.manifest.files.count) files)")
-            } catch {
-                importError = String(describing: error)
-            }
+        .sheet(isPresented: $showImporter) {
+            FileDocumentPicker(
+                allowedContentTypes: [
+                    UTType(filenameExtension: MigrationConfigBackupService.packageExtension) ?? .data
+                ],
+                copiesSelectedDocument: true,
+                allowsMultipleSelection: false,
+                onSelection: { result in
+                    showImporter = false
+                    do {
+                        guard let url = try result.get().first else { return }
+                        let set = try MigrationConfigBackupService.importPackage(at: url)
+                        taskCenter.refreshStoredSets()
+                        log("migration: config package imported (\(set.manifest.files.count) files)")
+                    } catch {
+                        importError = String(describing: error)
+                    }
+                },
+                onCancel: { showImporter = false }
+            )
         }
         .alert("import.error.title", isPresented: Binding(
             get: { importError != nil },

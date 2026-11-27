@@ -1,94 +1,129 @@
 import SwiftUI
 
-// MARK: - Main page
-
+/// Splash ad cache blocker, laid out to match the upstream Erosion-CN page:
+/// a single inset-grouped List with an overview card, per-app sections and
+/// inline target rows (locate / preview / ignore / lock / restore).
 struct AdCacheBlockerView: View {
     @Environment(\.appLanguage) private var language
-    @State private var entries: [AdLockAppEntry] = []
     @State private var isScanning = false
     @State private var isStopping = false
-    @State private var scanCompleted = 0
-    @State private var scanTotal = 0
-    @State private var deniedContainers = 0
+    @State private var isOperating = false
+    @State private var allEntries: [AdLockAppEntry] = []
     @State private var searchText = ""
-    @State private var showWhitelisted = true
-    @State private var showWhitelistSheet = false
+    @State private var showEmptyApps = false
+    @State private var scanCompletedCount = 0
+    @State private var scanTotalCount = 0
+    @State private var activeScanToken: AdLockScanCancellationFlag?
+    @State private var busyItemID: String?
+    @State private var locateTarget: AdLockLocateTarget?
+    @State private var previewTarget: AdLockItem?
     @State private var showAddCustomSheet = false
-    @State private var activeCancellation: AdLockScanCancellationFlag?
+    @State private var showWhitelistSheet = false
+    @State private var whitelistRulesCount = 0
     @State private var batchAction: AdLockBatchAction?
-    @State private var hasLoaded = false
     @State private var notice: AdLockNotice?
+    @State private var hasLoaded = false
 
-    private var filteredEntries: [AdLockAppEntry] {
-        let base = showWhitelisted ? entries : entries.filter { !$0.isWhitelisted }
-        guard !searchText.isEmpty else { return base }
-        let query = searchText.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: language.locale
-        )
+    // MARK: - Derived state
+
+    private var detectedEntries: [AdLockAppEntry] {
+        allEntries.filter { !$0.items.isEmpty }
+    }
+
+    private var displayedEntries: [AdLockAppEntry] {
+        let base = showEmptyApps ? allEntries : detectedEntries
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return base }
         return base.filter { entry in
-            let name = displayName(entry).folding(
-                options: [.caseInsensitive, .diacriticInsensitive],
-                locale: language.locale
-            )
-            return name.contains(query) ||
-                entry.containerID.lowercased().contains(query.lowercased()) ||
-                entry.items.contains {
-                    $0.relativePath.lowercased().contains(query.lowercased()) ||
-                        $0.marker.lowercased().contains(query.lowercased())
-                }
+            displayName(entry).localizedCaseInsensitiveContains(trimmed) ||
+            entry.containerID.localizedCaseInsensitiveContains(trimmed) ||
+            entry.items.contains {
+                $0.relativePath.localizedCaseInsensitiveContains(trimmed) ||
+                $0.marker.localizedCaseInsensitiveContains(trimmed)
+            }
         }
     }
 
-    private var detectedCount: Int {
-        entries.reduce(0) { $0 + $1.items.count }
+    private var totalAdFoldersCount: Int {
+        detectedEntries.reduce(0) { $0 + $1.items.count }
     }
 
-    private var lockedCount: Int {
-        entries.reduce(0) { $0 + $1.lockedCount }
-    }
-
-    private var pendingCount: Int {
-        entries.reduce(0) { $0 + $1.pendingCount }
-    }
-
-    private var reclaimableBytes: Int64 {
-        entries.reduce(0) { $0 + $1.reclaimableBytes }
-    }
-
-    private var lockableCount: Int {
-        entries.reduce(0) { total, entry in
-            total + entry.items.filter { !$0.isWhitelisted && $0.needsActionToLock }.count
+    private var whitelistedTargetCount: Int {
+        detectedEntries.reduce(0) { total, entry in
+            total + entry.items.filter { $0.isWhitelisted }.count
         }
     }
 
-    private var unlockableCount: Int {
-        entries.reduce(0) { total, entry in
-            total + entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }.count
+    private var activeTargetCount: Int {
+        totalAdFoldersCount - whitelistedTargetCount
+    }
+
+    private var fullyLockedCount: Int {
+        detectedEntries.reduce(0) { total, entry in
+            total + entry.items.filter { !$0.isWhitelisted && !$0.needsActionToLock }.count
         }
     }
+
+    private var pendingLockOrHardenCount: Int {
+        detectedEntries.reduce(0) { total, entry in
+            total + entry.items.filter { $0.needsActionToLock }.count
+        }
+    }
+
+    private var totalReclaimableAdBytes: Int64 {
+        detectedEntries.reduce(0) { total, entry in
+            total + entry.items
+                .filter { !$0.isWhitelisted && !$0.isLockedReadOnly }
+                .reduce(0) { $0 + $1.cachedBytes }
+        }
+    }
+
+    // MARK: - Body
 
     var body: some View {
         List {
-            statusSection
-            if AdLockService.isAvailable {
-                resultsSection
-            }
+            overviewSection
             boundarySection
+
+            if isScanning {
+                scanProgressSection
+            }
+            if isOperating {
+                operatingSection
+            }
+
+            if displayedEntries.isEmpty && !isScanning {
+                emptySection
+            } else {
+                ForEach(displayedEntries) { entry in
+                    appSection(entry)
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(language.text("adlock.title"))
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: language.text("adlock.search_placeholder"))
+        .searchable(
+            text: $searchText,
+            prompt: language.text("adlock.search_placeholder")
+        )
         .toolbar { toolbarContent }
-        .sheet(isPresented: $showWhitelistSheet) {
+        .sheet(item: $locateTarget) { target in
             NavigationStack {
-                AdWhitelistManagerSheet(entries: entries)
+                locateDestination(target)
+            }
+        }
+        .sheet(item: $previewTarget) { item in
+            NavigationStack {
+                HexViewerView(path: item.fullPath, readOnly: true)
             }
         }
         .sheet(isPresented: $showAddCustomSheet) {
+            AddAdCustomPathSheet { rescan() }
+        }
+        .sheet(isPresented: $showWhitelistSheet) {
             NavigationStack {
-                AddAdCustomPathSheet { rescan() }
+                AdWhitelistManagerSheet(entries: detectedEntries)
             }
         }
         .alert(item: $batchAction) { action in
@@ -102,239 +137,525 @@ struct AdCacheBlockerView: View {
             )
         }
         .onAppear {
+            whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
             guard !hasLoaded else { return }
             hasLoaded = true
             rescan()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .adLockWhitelistDidChange)) { _ in
+            whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
+            if !isScanning && !isOperating { rescan() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .adLockCustomPathsDidChange)) { _ in
+            if !isScanning && !isOperating { rescan() }
+        }
     }
 
-    // MARK: - Sections
+    // MARK: - Overview
 
     @ViewBuilder
-    private var statusSection: some View {
+    private var overviewSection: some View {
         Section {
-            if !AdLockService.isAvailable {
-                Label(language.text("adlock.unsupported"), systemImage: "exclamationmark.triangle.fill")
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(language.text("adlock.overview.title"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("\(totalAdFoldersCount)")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    totalAdFoldersCount > 0 ? AppTheme.accent : Color.secondary
+                                )
+                            Text(
+                                language.text(
+                                    "adlock.overview.counts",
+                                    Int64(detectedEntries.count)
+                                )
+                            )
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(language.text("adlock.overview.sentinel"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        Text("\(fullyLockedCount) / \(activeTargetCount)")
+                            .font(.system(.caption, design: .rounded).weight(.semibold))
+                            .foregroundStyle(.green)
+                        if activeTargetCount > 0 {
+                            ProgressView(
+                                value: Double(fullyLockedCount),
+                                total: Double(activeTargetCount)
+                            )
+                            .tint(.green)
+                            .frame(width: 84)
+                        }
+                    }
+                }
+
+                if whitelistedTargetCount > 0 {
+                    Label(
+                        language.text(
+                            "adlock.overview.whitelist_skipped",
+                            Int64(whitelistedTargetCount)
+                        ),
+                        systemImage: "checkmark.shield"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.teal)
+                }
+
+                if totalReclaimableAdBytes > 0 {
+                    Label(
+                        language.text(
+                            "adlock.overview.reclaimable",
+                            byteText(totalReclaimableAdBytes)
+                        ),
+                        systemImage: "internaldrive"
+                    )
+                    .font(.caption)
                     .foregroundStyle(.orange)
-            } else if isScanning {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        ProgressView()
-                        Text(
-                            scanTotal > 0
-                                ? language.text("adlock.scan_progress", Int64(scanCompleted), Int64(scanTotal))
-                                : language.text("adlock.scanning")
-                        )
-                        .font(.subheadline)
-                        Spacer()
-                        Button(isStopping ? language.text("adlock.stopping") : language.text("adlock.stop")) {
-                            stopScan()
+                }
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Button {
+                            rescan()
+                        } label: {
+                            Label(language.text("adlock.rescan"), systemImage: "arrow.clockwise")
+                                .lineLimit(1)
                         }
                         .buttonStyle(.bordered)
-                        .disabled(isStopping)
-                    }
-                    if scanTotal > 0 {
-                        ProgressView(
-                            value: Double(scanCompleted),
-                            total: Double(max(scanTotal, 1))
-                        )
-                    }
-                }
-                .padding(.vertical, 4)
-            } else {
-                LabeledContent(language.text("adlock.summary.detected"), value: "\(detectedCount)")
-                LabeledContent(language.text("adlock.summary.locked"), value: "\(lockedCount)")
-                LabeledContent(language.text("adlock.summary.pending"), value: "\(pendingCount)")
-                LabeledContent(
-                    language.text("adlock.summary.reclaimable"),
-                    value: byteText(reclaimableBytes)
-                )
-                if deniedContainers > 0 {
-                    Text(language.text("adlock.denied", Int64(deniedContainers)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+                        .controlSize(.small)
+                        .disabled(isScanning || isOperating)
 
-            Toggle(language.text("adlock.show_whitelisted"), isOn: $showWhitelisted)
-        } header: {
-            Text(language.text("adlock.section.overview"))
-        }
-    }
+                        Spacer(minLength: 4)
 
-    @ViewBuilder
-    private var resultsSection: some View {
-        Section {
-            if filteredEntries.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(isScanning ? language.text("adlock.scanning") : language.text("adlock.empty"))
-                        .font(.subheadline)
-                    Text(language.text("adlock.empty_hint"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 6)
-            } else {
-                ForEach(filteredEntries) { entry in
-                    NavigationLink {
-                        AdLockEntryDetailView(entry: entry) { updated in
-                            replace(updated)
+                        Button {
+                            showWhitelistSheet = true
+                        } label: {
+                            Label(
+                                language.text("adlock.whitelist_count", Int64(whitelistRulesCount)),
+                                systemImage: "checkmark.shield"
+                            )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                         }
-                    } label: {
-                        appRow(entry)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(isOperating)
+
+                        Menu {
+                            Button {
+                                batchAction = .lockAll
+                            } label: {
+                                Label(language.text("adlock.batch.lock_harden"), systemImage: "lock.fill")
+                            }
+                            .disabled(pendingLockOrHardenCount == 0 || isScanning || isOperating)
+
+                            Button {
+                                batchAction = .unlockAll
+                            } label: {
+                                Label(language.text("adlock.batch.restore_all"), systemImage: "lock.open.fill")
+                            }
+                            .disabled(!hasAnyLockedItem || isScanning || isOperating)
+                        } label: {
+                            Label(language.text("adlock.batch.title"), systemImage: "ellipsis.circle")
+                                .lineLimit(1)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(isScanning || isOperating)
+                    }
+
+                    if pendingLockOrHardenCount > 0 {
+                        Button {
+                            batchAction = .lockAll
+                        } label: {
+                            Label(
+                                language.text(
+                                    "adlock.lock_all_pending",
+                                    Int64(pendingLockOrHardenCount)
+                                ),
+                                systemImage: "lock.fill"
+                            )
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .tint(.orange)
+                        .disabled(isScanning || isOperating)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+
+            Toggle(isOn: $showEmptyApps) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(language.text("adlock.toggle.show_empty"))
+                        .font(.subheadline)
+                    Text(language.text("adlock.toggle.show_empty_subtitle"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(.orange)
         } header: {
-            Text(language.text("adlock.section.apps"))
+            AdLockHeaderLabel(
+                title: language.text("adlock.overview.header"),
+                symbol: "lock.shield"
+            )
+        } footer: {
+            Text(language.text("adlock.overview.footer"))
         }
     }
+
+    private var hasAnyLockedItem: Bool {
+        detectedEntries.contains { entry in
+            entry.items.contains { $0.isLockedReadOnly || $0.hasSentinel }
+        }
+    }
+
+    // MARK: - Boundary
 
     @ViewBuilder
     private var boundarySection: some View {
         Section {
-            Text(language.text("adlock.boundary_body"))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Label {
+                    Text(language.text("adlock.boundary.local"))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .foregroundStyle(.orange)
+                }
+                Label {
+                    Text(language.text("adlock.boundary.pairing"))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 2)
         } header: {
-            Text(language.text("adlock.boundary_title"))
+            AdLockHeaderLabel(
+                title: language.text("adlock.boundary_title"),
+                symbol: "exclamationmark.shield"
+            )
         }
     }
 
-    private func appRow(_ entry: AdLockAppEntry) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: entry.isAppGroup ? "person.2.square.stack.fill" : "app.dashed")
-                .font(.title3)
-                .foregroundStyle(entry.isWhitelisted ? Color.secondary : AppTheme.accent)
-                .frame(width: 28)
+    // MARK: - Progress
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(displayName(entry))
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    if entry.isWhitelisted {
-                        adLockBadge(language.text("adlock.whitelisted"), color: .secondary)
+    @ViewBuilder
+    private var scanProgressSection: some View {
+        Section {
+            HStack(spacing: 10) {
+                ProgressView()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(
+                        scanTotalCount > 0
+                            ? language.text(
+                                "adlock.scan_progress",
+                                Int64(scanCompletedCount),
+                                Int64(scanTotalCount)
+                            )
+                            : language.text("adlock.scanning")
+                    )
+                    .font(.subheadline)
+                    if scanTotalCount > 0 {
+                        ProgressView(
+                            value: Double(scanCompletedCount),
+                            total: Double(max(scanTotalCount, 1))
+                        )
                     }
                 }
-                Text(entry.isAppGroup ? entry.containerID : entry.containerID)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                HStack(spacing: 8) {
-                    Label("\(entry.items.count)", systemImage: "scope")
-                    Label("\(entry.lockedCount)", systemImage: "lock.fill")
-                    Text(byteText(entry.reclaimableBytes))
+                Spacer(minLength: 4)
+                Button {
+                    stopScan()
+                } label: {
+                    Text(isStopping ? language.text("adlock.stopping") : language.text("adlock.stop"))
+                        .font(.subheadline.weight(.medium))
+                        .fixedSize()
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .buttonStyle(.borderless)
+                .disabled(isStopping)
             }
-
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var operatingSection: some View {
+        Section {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text(language.text("adlock.operating"))
+                    .font(.subheadline)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Empty
+
+    @ViewBuilder
+    private var emptySection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(language.text("adlock.empty_title"))
+                    .font(.subheadline.weight(.medium))
+                Text(language.text("adlock.empty_detail"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - App section
+
+    @ViewBuilder
+    private func appSection(_ entry: AdLockAppEntry) -> some View {
+        Section {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Text(displayName(entry))
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        if entry.isWhitelisted {
+                            adLockBadge(language.text("adlock.whitelisted"), color: .teal)
+                        }
+                    }
+                    Text(appStatusSubtitle(entry))
+                        .font(.caption2)
+                        .foregroundStyle(appStatusColor(entry))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                }
+
+                Spacer(minLength: 4)
+
+                Menu {
+                    Button {
+                        locateTarget = AdLockLocateTarget(entry: entry, item: nil)
+                    } label: {
+                        Label(language.text("adlock.app.browse"), systemImage: "folder")
+                    }
+                    if entry.isWhitelisted {
+                        Button {
+                            toggleAppWhitelist(entry)
+                        } label: {
+                            Label(language.text("adlock.app.unwhitelist"), systemImage: "shield.slash")
+                        }
+                    } else {
+                        Button {
+                            toggleAppWhitelist(entry)
+                        } label: {
+                            Label(language.text("adlock.app.whitelist"), systemImage: "checkmark.shield")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .buttonStyle(.borderless)
+                .disabled(isOperating)
+
+                if entry.isWhitelisted {
+                    Button {
+                        toggleAppWhitelist(entry)
+                    } label: {
+                        Label(language.text("adlock.app.unwhitelist"), systemImage: "shield.slash")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.teal)
+                    .disabled(isOperating)
+                } else if entry.pendingCount > 0 {
+                    Button {
+                        toggleAllForApp(entry, lock: true)
+                    } label: {
+                        Label(language.text("adlock.app.lock_group"), systemImage: "lock.fill")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.orange)
+                    .disabled(isOperating)
+                } else if entry.items.contains(where: { $0.isLockedReadOnly || $0.hasSentinel }) {
+                    Button {
+                        toggleAllForApp(entry, lock: false)
+                    } label: {
+                        Label(language.text("adlock.app.unlock_group"), systemImage: "lock.open.fill")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.green)
+                    .disabled(isOperating)
+                }
+            }
+            .padding(.vertical, 2)
+
+            ForEach(entry.items) { item in
+                AdLockFolderRow(
+                    item: item,
+                    isBusy: isOperating || busyItemID != nil,
+                    onLocate: {
+                        locateTarget = AdLockLocateTarget(entry: entry, item: item)
+                    },
+                    onPreview: item.isDirectory ? nil : {
+                        previewTarget = item
+                    },
+                    onToggleLock: {
+                        toggleLock(item, in: entry)
+                    },
+                    onTogglePathWhitelist: item.isContainerWhitelisted ? nil : {
+                        togglePathWhitelist(item, in: entry)
+                    },
+                    onRemoveCustom: item.isCustomRule ? {
+                        removeCustom(item)
+                    } : nil
+                )
+            }
+        }
+    }
+
+    // MARK: - Status copy
+
+    private func appStatusSubtitle(_ entry: AdLockAppEntry) -> String {
+        if entry.isWhitelisted {
+            let lockedCount = entry.items.filter { $0.isLockedReadOnly }.count
+            if lockedCount > 0 {
+                return language.text(
+                    "adlock.app.status.whitelisted_locked",
+                    Int64(lockedCount)
+                )
+            }
+            return language.text("adlock.app.status.whitelisted_skip")
+        }
+        if entry.items.isEmpty {
+            return language.text("adlock.app.status.no_hits")
+        }
+        let skippedCount = entry.items.filter { $0.isWhitelisted }.count
+        let lockableItems = entry.items.filter { !$0.isWhitelisted }
+        if lockableItems.isEmpty {
+            return language.text("adlock.app.status.all_whitelisted", Int64(skippedCount))
+        }
+        let fullyProtected = lockableItems.filter { !$0.needsActionToLock }.count
+        let total = lockableItems.count
+        if fullyProtected == total {
+            var text = language.text(
+                "adlock.app.status.all_locked",
+                Int64(fullyProtected),
+                Int64(total)
+            )
+            if skippedCount > 0 {
+                text += " · " + language.text(
+                    "adlock.app.status.whitelist_suffix",
+                    Int64(skippedCount)
+                )
+            }
+            return text
+        }
+        var text = language.text(
+            "adlock.app.status.partial",
+            Int64(entry.items.count),
+            Int64(total - fullyProtected),
+            Int64(fullyProtected)
+        )
+        if skippedCount > 0 {
+            text += " · " + language.text(
+                "adlock.app.status.whitelist_suffix",
+                Int64(skippedCount)
+            )
+        }
+        return text
+    }
+
+    private func appStatusColor(_ entry: AdLockAppEntry) -> Color {
+        if entry.isWhitelisted {
+            return entry.items.contains(where: { $0.isLockedReadOnly }) ? .orange : .teal
+        }
+        if entry.items.isEmpty { return .secondary }
+        let lockableItems = entry.items.filter { !$0.isWhitelisted }
+        if lockableItems.isEmpty { return .teal }
+        let fullyProtected = lockableItems.filter { !$0.needsActionToLock }.count
+        return fullyProtected == lockableItems.count ? .green : .orange
     }
 
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
             Button {
-                rescan()
+                showWhitelistSheet = true
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Label(language.text("adlock.toolbar.whitelist"), systemImage: "checkmark.shield")
             }
-            .disabled(isScanning || !AdLockService.isAvailable)
-            .accessibilityLabel(language.text("adlock.rescan"))
-        }
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Menu {
-                Button {
-                    showWhitelistSheet = true
-                } label: {
-                    Label(language.text("adlock.whitelist_manage"), systemImage: "checkmark.shield")
-                }
-                Button {
-                    showAddCustomSheet = true
-                } label: {
-                    Label(language.text("adlock.add_custom"), systemImage: "plus")
-                }
-                Divider()
-                Button {
-                    batchAction = .lockAll
-                } label: {
-                    Label(language.text("adlock.lock_all"), systemImage: "lock.fill")
-                }
-                .disabled(lockableCount == 0 || isScanning)
-                Button {
-                    batchAction = .unlockAll
-                } label: {
-                    Label(language.text("adlock.unlock_all"), systemImage: "lock.open.fill")
-                }
-                .disabled(unlockableCount == 0 || isScanning)
+            .disabled(isOperating)
+
+            Button {
+                showAddCustomSheet = true
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Label(language.text("adlock.toolbar.add"), systemImage: "plus")
             }
+            .disabled(isOperating)
         }
     }
 
-    private func batchAlert(for action: AdLockBatchAction) -> Alert {
-        switch action {
-        case .lockAll:
-            return Alert(
-                title: Text(language.text("adlock.lock_all_confirm_title")),
-                message: Text(language.text("adlock.lock_all_confirm_message", Int64(lockableCount))),
-                primaryButton: .destructive(Text(language.text("adlock.lock_all"))) {
-                    performBatch(lock: true)
-                },
-                secondaryButton: .cancel(Text(language.text("common.cancel")))
-            )
-        case .unlockAll:
-            return Alert(
-                title: Text(language.text("adlock.unlock_all_confirm_title")),
-                message: Text(language.text("adlock.unlock_all_confirm_message", Int64(unlockableCount))),
-                primaryButton: .destructive(Text(language.text("adlock.unlock_all"))) {
-                    performBatch(lock: false)
-                },
-                secondaryButton: .cancel(Text(language.text("common.cancel")))
-            )
-        }
-    }
-
-    // MARK: - Actions
+    // MARK: - Scan
 
     private func rescan() {
         guard AdLockService.isAvailable else { return }
         let flag = AdLockScanCancellationFlag()
-        activeCancellation = flag
+        activeScanToken = flag
         isScanning = true
         isStopping = false
-        scanCompleted = 0
-        scanTotal = 0
-        deniedContainers = 0
+        scanCompletedCount = 0
+        scanTotalCount = 0
 
         DispatchQueue.global(qos: .userInitiated).async {
             let snapshot = AdLockService.scan(cancel: flag) { completed, total in
                 DispatchQueue.main.async {
-                    scanCompleted = completed
-                    scanTotal = total
+                    scanCompletedCount = completed
+                    scanTotalCount = total
                 }
             }
             DispatchQueue.main.async {
-                guard activeCancellation === flag else { return }
-                activeCancellation = nil
+                guard activeScanToken === flag else { return }
+                activeScanToken = nil
                 isScanning = false
                 isStopping = false
-                entries = snapshot.entries
-                scanCompleted = snapshot.scannedContainers
-                scanTotal = snapshot.scannedContainers
-                deniedContainers = snapshot.deniedContainers
+                allEntries = snapshot.entries
+                scanCompletedCount = snapshot.scannedContainers
+                scanTotalCount = snapshot.scannedContainers
+                whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
                 if snapshot.cancelled {
                     notice = AdLockNotice(
                         title: language.text("adlock.scan_cancelled_title"),
@@ -347,371 +668,152 @@ struct AdCacheBlockerView: View {
 
     private func stopScan() {
         isStopping = true
-        activeCancellation?.cancel()
-    }
-
-    private func performBatch(lock: Bool) {
-        let flag = AdLockScanCancellationFlag()
-        let snapshotEntries = entries
-        isScanning = true
-        isStopping = false
-        scanCompleted = 0
-        scanTotal = snapshotEntries.count
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            var results: [AdLockMutationResult] = []
-            for (index, entry) in snapshotEntries.enumerated() {
-                if flag.isCancelled { break }
-                let targets = lock
-                    ? entry.items.filter { !$0.isWhitelisted && $0.needsActionToLock }
-                    : entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }
-                guard !targets.isEmpty else {
-                    DispatchQueue.main.async {
-                        scanCompleted = index + 1
-                    }
-                    continue
-                }
-                results.append(
-                    contentsOf: AdLockService.setLocked(
-                        items: targets,
-                        containerPath: entry.containerPath,
-                        locked: lock,
-                        cancel: flag
-                    )
-                )
-                DispatchQueue.main.async {
-                    scanCompleted = index + 1
-                }
-            }
-
-            DispatchQueue.main.async {
-                isScanning = false
-                isStopping = false
-                let failures = results.filter { !$0.ok }
-                if !failures.isEmpty {
-                    notice = AdLockNotice(
-                        title: language.text("adlock.results.title"),
-                        message: language.text(
-                            "adlock.results.summary",
-                            Int64(results.count - failures.count),
-                            Int64(failures.count)
-                        )
-                    )
-                }
-                rescan()
-            }
-        }
-    }
-
-    private func replace(_ entry: AdLockAppEntry) {
-        if let index = entries.firstIndex(where: { $0.id == entry.id }) {
-            entries[index] = entry
-        }
-    }
-
-    private func displayName(_ entry: AdLockAppEntry) -> String {
-        AdLockService.displayName(for: entry, languageCode: language.rawValue)
-    }
-}
-
-// MARK: - Detail page
-
-struct AdLockEntryDetailView: View {
-    @Environment(\.appLanguage) private var language
-    @State private var entry: AdLockAppEntry
-    @State private var isBusy = false
-    @State private var notice: AdLockNotice?
-    @State private var locateItem: AdLockItem?
-    @State private var previewItem: AdLockItem?
-    private let onChanged: (AdLockAppEntry) -> Void
-
-    init(entry: AdLockAppEntry, onChanged: @escaping (AdLockAppEntry) -> Void) {
-        _entry = State(initialValue: entry)
-        self.onChanged = onChanged
-    }
-
-    var body: some View {
-        List {
-            Section {
-                LabeledContent(language.text("adlock.summary.detected"), value: "\(entry.items.count)")
-                LabeledContent(language.text("adlock.summary.locked"), value: "\(entry.lockedCount)")
-                LabeledContent(language.text("adlock.summary.reclaimable"), value: byteText(entry.reclaimableBytes))
-                if entry.isWhitelisted {
-                    Label(language.text("adlock.app_whitelisted"), systemImage: "checkmark.shield.fill")
-                        .foregroundStyle(.green)
-                }
-            } header: {
-                Text(displayName)
-            }
-
-            Section {
-                ForEach(entry.items) { item in
-                    itemRow(item)
-                }
-            } header: {
-                Text(language.text("adlock.section.targets"))
-            }
-
-            Section {
-                Button {
-                    toggleEntryWhitelist()
-                } label: {
-                    Label(
-                        entry.isWhitelisted
-                            ? language.text("adlock.app_unwhitelist")
-                            : language.text("adlock.app_whitelist"),
-                        systemImage: entry.isWhitelisted ? "shield.slash" : "checkmark.shield"
-                    )
-                }
-                .disabled(isBusy)
-
-                Button {
-                    lockAll()
-                } label: {
-                    Label(language.text("adlock.lock_all"), systemImage: "lock.fill")
-                }
-                .disabled(isBusy || entry.items.filter { $0.needsActionToLock }.isEmpty)
-
-                Button {
-                    unlockAll()
-                } label: {
-                    Label(language.text("adlock.unlock_all"), systemImage: "lock.open.fill")
-                }
-                .disabled(isBusy || entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }.isEmpty)
-            }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle(displayName)
-        .navigationBarTitleDisplayMode(.inline)
-        .overlay {
-            if isBusy {
-                ProgressView()
-                    .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-            }
-        }
-        .alert(item: $notice) { notice in
-            Alert(
-                title: Text(notice.title),
-                message: Text(notice.message),
-                dismissButton: .default(Text(language.text("common.ok")))
-            )
-        }
-        .sheet(item: $locateItem) { item in
-            NavigationStack {
-                FileBrowserView(
-                    containerPath: entry.containerPath,
-                    startPath: (item.fullPath as NSString).deletingLastPathComponent,
-                    title: item.relativePath,
-                    bundleID: entry.containerID,
-                    highlightPath: item.fullPath
-                )
-            }
-        }
-        .sheet(item: $previewItem) { item in
-            NavigationStack {
-                HexViewerView(path: item.fullPath, readOnly: true)
-            }
-        }
-    }
-
-    private var displayName: String {
-        AdLockService.displayName(for: entry, languageCode: language.rawValue)
-    }
-
-    private func itemRow(_ item: AdLockItem) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: item.isDirectory ? "folder.fill" : "doc.text.fill")
-                .foregroundStyle(item.isLockedReadOnly ? Color.green : Color.secondary)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.relativePath)
-                    .font(.footnote.monospaced())
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                HStack(spacing: 6) {
-                    if item.isLockedReadOnly {
-                        adLockBadge(language.text("adlock.locked"), color: .green)
-                    } else if item.needsHarden {
-                        adLockBadge(language.text("adlock.needs_harden"), color: .orange)
-                    } else {
-                        adLockBadge(language.text("adlock.unlocked"), color: .secondary)
-                    }
-                    if item.isWhitelisted {
-                        adLockBadge(language.text("adlock.whitelisted"), color: .secondary)
-                    }
-                    if item.isCustomRule {
-                        adLockBadge(language.text("adlock.custom_badge"), color: .blue)
-                    }
-                    Text("\(AdLockPolicy.octalString(item.mode)) · \(byteText(item.cachedBytes))")
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer(minLength: 4)
-
-            Button {
-                toggleLock(item)
-            } label: {
-                Image(systemName: item.isLockedReadOnly ? "lock.open.fill" : "lock.fill")
-                    .font(.body)
-            }
-            .buttonStyle(.borderless)
-            .disabled(isBusy || item.isWhitelisted)
-            .accessibilityLabel(
-                item.isLockedReadOnly
-                    ? language.text("adlock.unlock")
-                    : language.text("adlock.lock")
-            )
-        }
-        .padding(.vertical, 2)
-        .contextMenu {
-            Button {
-                locateItem = item
-            } label: {
-                Label(language.text("adlock.locate"), systemImage: "scope")
-            }
-            if !item.isDirectory {
-                Button {
-                    previewItem = item
-                } label: {
-                    Label(language.text("adlock.preview"), systemImage: "eye")
-                }
-            }
-            Button {
-                togglePathWhitelist(item)
-            } label: {
-                Label(
-                    item.isWhitelisted
-                        ? language.text("adlock.path_unwhitelist")
-                        : language.text("adlock.path_whitelist"),
-                    systemImage: item.isWhitelisted ? "shield.slash" : "checkmark.shield"
-                )
-            }
-        }
+        activeScanToken?.cancel()
     }
 
     // MARK: - Actions
 
-    private func toggleLock(_ item: AdLockItem) {
-        guard !isBusy else { return }
-        isBusy = true
-        let target = item
-        let containerPath = entry.containerPath
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = AdLockService.setLocked(
-                item: target,
-                containerPath: containerPath,
-                locked: !target.isLockedReadOnly
-            )
-            DispatchQueue.main.async {
-                isBusy = false
-                if result.ok {
-                    apply([result])
-                } else {
-                    notice = AdLockNotice(
-                        title: language.text("adlock.results.title"),
-                        message: result.error ?? language.text("adlock.error.generic")
-                    )
-                }
-            }
-        }
-    }
-
-    private func lockAll() {
-        let targets = entry.items.filter { $0.needsActionToLock }
-        runBatch(targets: targets, locked: true)
-    }
-
-    private func unlockAll() {
-        let targets = entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }
-        runBatch(targets: targets, locked: false)
-    }
-
-    private func runBatch(targets: [AdLockItem], locked: Bool) {
-        guard !targets.isEmpty, !isBusy else { return }
-        isBusy = true
-        let containerPath = entry.containerPath
-        let flag = AdLockScanCancellationFlag()
+    private func toggleLock(_ item: AdLockItem, in entry: AdLockAppEntry) {
+        guard !isOperating else { return }
+        busyItemID = item.id
+        let targets = [item]
         DispatchQueue.global(qos: .userInitiated).async {
             let results = AdLockService.setLocked(
                 items: targets,
-                containerPath: containerPath,
-                locked: locked,
-                cancel: flag
+                containerPath: entry.containerPath,
+                locked: item.needsActionToLock,
+                cancel: AdLockScanCancellationFlag()
             )
             DispatchQueue.main.async {
-                isBusy = false
-                apply(results)
-                let failures = results.filter { !$0.ok }
-                if !failures.isEmpty {
+                busyItemID = nil
+                apply(results, to: entry)
+                reportFailures(results)
+            }
+        }
+    }
+
+    private func toggleAllForApp(_ entry: AdLockAppEntry, lock: Bool) {
+        let targets = lock
+            ? entry.items.filter { !$0.isWhitelisted && $0.needsActionToLock }
+            : entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }
+        guard !targets.isEmpty, !isOperating else { return }
+        executeBatch(pairs: [(entry, targets)], lock: lock)
+    }
+
+    private func executeBatch(
+        pairs: [(AdLockAppEntry, [AdLockItem])],
+        lock: Bool
+    ) {
+        guard !pairs.isEmpty else { return }
+        isOperating = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            var resultsByEntry: [String: [AdLockMutationResult]] = [:]
+            var allResults: [AdLockMutationResult] = []
+            for (entry, items) in pairs {
+                if items.isEmpty { continue }
+                let results = AdLockService.setLocked(
+                    items: items,
+                    containerPath: entry.containerPath,
+                    locked: lock,
+                    cancel: AdLockScanCancellationFlag()
+                )
+                resultsByEntry[entry.id, default: []].append(contentsOf: results)
+                allResults.append(contentsOf: results)
+            }
+            DispatchQueue.main.async {
+                isOperating = false
+                for (entryID, results) in resultsByEntry {
+                    guard let entry = allEntries.first(where: { $0.id == entryID }) else { continue }
+                    apply(results, to: entry)
+                }
+                reportFailures(allResults)
+                if !allResults.isEmpty && allResults.allSatisfy({ $0.ok }) {
                     notice = AdLockNotice(
-                        title: language.text("adlock.results.title"),
-                        message: language.text(
-                            "adlock.results.summary",
-                            Int64(results.count - failures.count),
-                            Int64(failures.count)
-                        )
+                        title: lock
+                            ? language.text("adlock.result.locked_title")
+                            : language.text("adlock.result.unlocked_title"),
+                        message: lock
+                            ? language.text("adlock.result.locked_message", Int64(allResults.count))
+                            : language.text("adlock.result.unlocked_message", Int64(allResults.count))
                     )
                 }
             }
         }
     }
 
-    private func toggleEntryWhitelist() {
-        guard !isBusy else { return }
-        isBusy = true
-        let containerID = entry.containerID
-        let isAppGroup = entry.isAppGroup
-        let containerPath = entry.containerPath
+    private func apply(_ results: [AdLockMutationResult], to entry: AdLockAppEntry) {
+        guard let index = allEntries.firstIndex(where: { $0.id == entry.id }) else { return }
+        allEntries[index] = allEntries[index].applying(results)
+    }
+
+    private func reportFailures(_ results: [AdLockMutationResult]) {
+        let failures = results.filter { !$0.ok }
+        guard !failures.isEmpty else { return }
+        notice = AdLockNotice(
+            title: language.text("adlock.results.title"),
+            message: failures.first?.error ?? language.text("adlock.error.generic")
+        )
+    }
+
+    private func toggleAppWhitelist(_ entry: AdLockAppEntry) {
+        guard !isOperating else { return }
         let whitelisting = !entry.isWhitelisted
-
         if whitelisting {
-            _ = AdLockWhitelistStore.shared.addBundleRule(bundleOrGroupID: containerID)
+            _ = AdLockWhitelistStore.shared.addBundleRule(bundleOrGroupID: entry.containerID)
         } else {
-            AdLockWhitelistStore.shared.removeMatchingContainer(id: containerID, isAppGroup: isAppGroup)
+            AdLockWhitelistStore.shared.removeMatchingContainer(
+                id: entry.containerID,
+                isAppGroup: entry.isAppGroup
+            )
         }
+        whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
 
-        let items = entry.items.map {
-            $0.updated(whitelisted: whitelisting)
+        let items = entry.items.map { item -> AdLockItem in
+            let pathWhitelisted = AdLockWhitelistStore.shared.isPathWhitelisted(item.fullPath)
+            return item.updated(
+                whitelisted: whitelisting || pathWhitelisted,
+                pathWhitelisted: pathWhitelisted,
+                containerWhitelisted: whitelisting
+            )
         }
-        var updated = entry.replacingItems(items).withWhitelisted(whitelisting)
+        let updated = AdLockAppEntry(
+            id: entry.id,
+            containerID: entry.containerID,
+            displayName: entry.displayName,
+            containerPath: entry.containerPath,
+            isAppGroup: entry.isAppGroup,
+            isWhitelisted: whitelisting,
+            items: items
+        )
+        replace(updated)
+
+        guard whitelisting else { return }
+        let locked = items.filter { $0.isLockedReadOnly || $0.hasSentinel }
+        guard !locked.isEmpty else { return }
+        isOperating = true
         DispatchQueue.global(qos: .userInitiated).async {
-            let results = whitelisting
-                ? AdLockService.restoreWhitelisted(
-                    items: items,
-                    containerPath: containerPath,
-                    cancel: AdLockScanCancellationFlag()
-                )
-                : []
+            let results = AdLockService.restoreWhitelisted(
+                items: locked,
+                containerPath: entry.containerPath,
+                cancel: AdLockScanCancellationFlag()
+            )
             DispatchQueue.main.async {
-                isBusy = false
-                if !results.isEmpty {
-                    updated = updated.applying(results)
-                }
-                entry = updated
-                onChanged(updated)
+                isOperating = false
+                apply(results, to: updated)
             }
         }
     }
 
-    private func togglePathWhitelist(_ item: AdLockItem) {
-        guard !isBusy else { return }
-        if item.isWhitelisted {
-            if item.isContainerWhitelisted {
-                notice = AdLockNotice(
-                    title: language.text("adlock.whitelist"),
-                    message: language.text("adlock.error.container_whitelisted")
-                )
-                return
-            }
+    private func togglePathWhitelist(_ item: AdLockItem, in entry: AdLockAppEntry) {
+        guard !isOperating else { return }
+        if item.isPathWhitelisted {
             AdLockWhitelistStore.shared.removeExactPath(item.fullPath)
-            let updatedItem = item.updated(whitelisted: false)
-            var updated = entry.replacingItem(updatedItem)
-            entry = updated
-            onChanged(updated)
+            let updatedItem = item.updated(
+                whitelisted: item.isContainerWhitelisted,
+                pathWhitelisted: false
+            )
+            replace(entry.replacingItem(updatedItem))
+            whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
         } else {
             let result = AdLockWhitelistStore.shared.addPathRule(
                 rawPath: item.fullPath,
@@ -720,25 +822,23 @@ struct AdLockEntryDetailView: View {
             )
             switch result {
             case .success:
-                let updatedItem = item.updated(whitelisted: true)
-                var updated = entry.replacingItem(updatedItem)
-                entry = updated
-                onChanged(updated)
+                let updatedItem = item.updated(whitelisted: true, pathWhitelisted: true)
+                replace(entry.replacingItem(updatedItem))
+                whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
                 if item.isLockedReadOnly || item.hasSentinel {
-                    isBusy = true
-                    let containerPath = entry.containerPath
+                    isOperating = true
                     DispatchQueue.global(qos: .userInitiated).async {
                         let results = AdLockService.setLocked(
                             items: [updatedItem],
-                            containerPath: containerPath,
+                            containerPath: entry.containerPath,
                             locked: false,
                             cancel: AdLockScanCancellationFlag()
                         )
                         DispatchQueue.main.async {
-                            isBusy = false
-                            updated = updated.applying(results)
-                            entry = updated
-                            onChanged(updated)
+                            isOperating = false
+                            if let entry = allEntries.first(where: { $0.id == entry.id }) {
+                                apply(results, to: entry)
+                            }
                         }
                     }
                 }
@@ -751,14 +851,287 @@ struct AdLockEntryDetailView: View {
         }
     }
 
-    private func apply(_ results: [AdLockMutationResult]) {
-        let updated = entry.applying(results)
-        entry = updated
-        onChanged(updated)
+    private func removeCustom(_ item: AdLockItem) {
+        AdLockCustomWatchStore.shared.remove(fullPath: item.fullPath)
+        rescan()
+    }
+
+    private func replace(_ entry: AdLockAppEntry) {
+        guard let index = allEntries.firstIndex(where: { $0.id == entry.id }) else { return }
+        allEntries[index] = entry
+    }
+
+    private func displayName(_ entry: AdLockAppEntry) -> String {
+        AdLockService.displayName(for: entry, languageCode: language.rawValue)
+    }
+
+    // MARK: - Batch confirmation
+
+    private func batchAlert(for action: AdLockBatchAction) -> Alert {
+        switch action {
+        case .lockAll:
+            let count = pendingLockOrHardenCount
+            return Alert(
+                title: Text(language.text("adlock.lock_all_confirm_title")),
+                message: Text(language.text("adlock.lock_all_confirm_message", Int64(count))),
+                primaryButton: .destructive(Text(language.text("adlock.lock_all"))) {
+                    let pairs = detectedEntries.compactMap { entry -> (AdLockAppEntry, [AdLockItem])? in
+                        let items = entry.items.filter { !$0.isWhitelisted && $0.needsActionToLock }
+                        return items.isEmpty ? nil : (entry, items)
+                    }
+                    executeBatch(pairs: pairs, lock: true)
+                },
+                secondaryButton: .cancel(Text(language.text("common.cancel")))
+            )
+        case .unlockAll:
+            let pairs = detectedEntries.compactMap { entry -> (AdLockAppEntry, [AdLockItem])? in
+                let items = entry.items.filter { $0.isLockedReadOnly || $0.hasSentinel }
+                return items.isEmpty ? nil : (entry, items)
+            }
+            let count = pairs.reduce(0) { $0 + $1.1.count }
+            return Alert(
+                title: Text(language.text("adlock.unlock_all_confirm_title")),
+                message: Text(language.text("adlock.unlock_all_confirm_message", Int64(count))),
+                primaryButton: .destructive(Text(language.text("adlock.unlock_all"))) {
+                    executeBatch(pairs: pairs, lock: false)
+                },
+                secondaryButton: .cancel(Text(language.text("common.cancel")))
+            )
+        }
+    }
+
+    // MARK: - Locator
+
+    @ViewBuilder
+    private func locateDestination(_ target: AdLockLocateTarget) -> some View {
+        if let item = target.item {
+            FileBrowserView(
+                containerPath: target.entry.containerPath,
+                startPath: (item.fullPath as NSString).deletingLastPathComponent,
+                title: item.relativePath,
+                bundleID: target.entry.containerID,
+                highlightPath: item.fullPath
+            )
+        } else {
+            FileBrowserView(
+                containerPath: target.entry.containerPath,
+                title: displayName(target.entry),
+                bundleID: target.entry.containerID
+            )
+        }
     }
 }
 
-// MARK: - Shared helpers
+// MARK: - Folder row
+
+private struct AdLockFolderRow: View {
+    @Environment(\.appLanguage) private var language
+    let item: AdLockItem
+    let isBusy: Bool
+    let onLocate: () -> Void
+    let onPreview: (() -> Void)?
+    let onToggleLock: () -> Void
+    let onTogglePathWhitelist: (() -> Void)?
+    let onRemoveCustom: (() -> Void)?
+
+    private var statusText: String {
+        let octal = AdLockPolicy.octalString(item.mode)
+        if item.isDirectory {
+            if item.isLockedReadOnly {
+                return "\(octal) " + language.text(
+                    item.hasSentinel
+                        ? "adlock.item.status.sentinel_locked"
+                        : "adlock.item.status.weak_lock"
+                )
+            }
+            return "\(octal) " + language.text("adlock.item.status.writable")
+        }
+        return "\(octal) " + language.text(
+            item.isLockedReadOnly
+                ? "adlock.item.status.file_locked"
+                : "adlock.item.status.writable"
+        )
+    }
+
+    private var statusColor: Color {
+        if item.isWhitelisted && !item.isLockedReadOnly { return .teal }
+        if !item.needsActionToLock { return .green }
+        if item.isLockedReadOnly && item.isDirectory && !item.hasSentinel { return .yellow }
+        return .orange
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: item.isDirectory ? "folder.fill" : "doc.text.fill")
+                    .font(.caption2)
+                    .foregroundStyle(item.isDirectory ? AppTheme.accent : .blue)
+
+                Text(item.relativePath)
+                    .font(.system(.caption, design: .monospaced).weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Spacer(minLength: 6)
+
+                Text(byteText(item.cachedBytes))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 6) {
+                if item.isCustomRule {
+                    adLockBadge(language.text("adlock.custom_badge"), color: .blue)
+                }
+                if item.isWhitelisted {
+                    adLockBadge(language.text("adlock.whitelisted"), color: .teal)
+                }
+                if !item.marker.isEmpty {
+                    Text(item.marker)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Text(statusText)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(statusColor.opacity(0.16), in: Capsule())
+                    .foregroundStyle(statusColor == .yellow ? .orange : statusColor)
+                    .fixedSize()
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    leftActions
+                    Spacer(minLength: 4)
+                    lockAction
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    leftActions
+                    lockAction
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var leftActions: some View {
+        Button(action: onLocate) {
+            HStack(spacing: 3) {
+                Image(systemName: "scope")
+                Text(language.text("adlock.locate"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .font(.caption.weight(.medium))
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .disabled(isBusy)
+
+        if let onPreview {
+            Button(action: onPreview) {
+                HStack(spacing: 3) {
+                    Image(systemName: "eye")
+                    Text(language.text("adlock.preview"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .font(.caption.weight(.medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(isBusy)
+        }
+
+        if let onTogglePathWhitelist {
+            Button(action: onTogglePathWhitelist) {
+                HStack(spacing: 3) {
+                    Image(systemName: item.isPathWhitelisted
+                          ? "shield.slash" : "checkmark.shield")
+                    Text(language.text(
+                        item.isPathWhitelisted
+                            ? "adlock.item.unignore"
+                            : "adlock.item.ignore"
+                    ))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                }
+                .font(.caption.weight(.medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(item.isPathWhitelisted ? .teal : .secondary)
+            .disabled(isBusy)
+        }
+
+        if let onRemoveCustom {
+            Button(role: .destructive, action: onRemoveCustom) {
+                Image(systemName: "trash")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(isBusy)
+        }
+    }
+
+    @ViewBuilder
+    private var lockAction: some View {
+        if !item.needsActionToLock {
+            if item.isLockedReadOnly {
+                Button(action: onToggleLock) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "lock.open.fill")
+                        Text(language.text("adlock.unlock"))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(.green)
+                .disabled(isBusy)
+            } else {
+                Text(language.text("adlock.item.skipped"))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.teal)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.teal.opacity(0.14), in: Capsule())
+            }
+        } else {
+            Button(action: onToggleLock) {
+                HStack(spacing: 3) {
+                    Image(systemName: item.needsHarden ? "lock.fill" : "lock.fill")
+                    Text(language.text(
+                        item.needsHarden
+                            ? "adlock.item.harden"
+                            : "adlock.lock"
+                    ))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                }
+                .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .tint(.orange)
+            .disabled(isBusy)
+        }
+    }
+}
+
+// MARK: - Shared bits
+
+struct AdLockLocateTarget: Identifiable {
+    let id = UUID()
+    let entry: AdLockAppEntry
+    let item: AdLockItem?
+}
 
 enum AdLockBatchAction: String, Identifiable {
     case lockAll
@@ -772,6 +1145,18 @@ struct AdLockNotice: Identifiable {
     let message: String
 }
 
+struct AdLockHeaderLabel: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(nil)
+    }
+}
+
 func byteText(_ bytes: Int64) -> String {
     ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
 }
@@ -779,11 +1164,12 @@ func byteText(_ bytes: Int64) -> String {
 @ViewBuilder
 func adLockBadge(_ text: String, color: Color) -> some View {
     Text(text)
-        .font(.caption2.weight(.medium))
+        .font(.system(size: 10, weight: .semibold))
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(color.opacity(0.14), in: Capsule())
+        .background(color.opacity(0.15), in: Capsule())
         .foregroundStyle(color)
+        .fixedSize()
 }
 
 extension AdLockItem {
@@ -791,7 +1177,9 @@ extension AdLockItem {
         mode: Int? = nil,
         hasSentinel: Bool? = nil,
         bytes: Int64? = nil,
-        whitelisted: Bool? = nil
+        whitelisted: Bool? = nil,
+        pathWhitelisted: Bool? = nil,
+        containerWhitelisted: Bool? = nil
     ) -> AdLockItem {
         AdLockItem(
             id: id,
@@ -804,7 +1192,8 @@ extension AdLockItem {
             cachedBytes: bytes ?? cachedBytes,
             hasSentinel: hasSentinel ?? self.hasSentinel,
             isWhitelisted: whitelisted ?? isWhitelisted,
-            isContainerWhitelisted: isContainerWhitelisted
+            isPathWhitelisted: pathWhitelisted ?? isPathWhitelisted,
+            isContainerWhitelisted: containerWhitelisted ?? isContainerWhitelisted
         )
     }
 }
@@ -823,18 +1212,6 @@ extension AdLockAppEntry {
             isAppGroup: isAppGroup,
             isWhitelisted: isWhitelisted,
             items: newItems
-        )
-    }
-
-    func withWhitelisted(_ flag: Bool) -> AdLockAppEntry {
-        AdLockAppEntry(
-            id: id,
-            containerID: containerID,
-            displayName: displayName,
-            containerPath: containerPath,
-            isAppGroup: isAppGroup,
-            isWhitelisted: flag,
-            items: items.map { $0.updated(whitelisted: flag) }
         )
     }
 
