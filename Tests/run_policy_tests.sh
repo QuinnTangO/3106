@@ -91,6 +91,9 @@ swiftc -O \
   "$ROOT/ThreeOneOSSix/helpers/SQLiteSidecarPolicy.swift" \
   "$ROOT/ThreeOneOSSix/helpers/PlistDatePolicy.swift" \
   "$ROOT/ThreeOneOSSix/helpers/PermissionPolicy.swift" \
+  "$ROOT/ThreeOneOSSix/helpers/AdLockCatalog.swift" \
+  "$ROOT/ThreeOneOSSix/helpers/AdLockPolicy.swift" \
+  "$ROOT/ThreeOneOSSix/helpers/AdLockStore.swift" \
   "$ROOT/ThreeOneOSSix/helpers/DeviceCPU.swift" \
   "$ROOT/ThreeOneOSSix/helpers/JailbreakDetector.swift" \
   "$ROOT/ThreeOneOSSix/helpers/RegionKeyPolicy.swift" \

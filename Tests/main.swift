@@ -2140,6 +2140,280 @@ expect(uafLine.contains("controllable"), "export names the verdict")
 expect(uafLine.contains("120/120"), "export carries the count")
 expect(uafLine.contains("build=23E246"), "export carries the build")
 
+// MARK: - Ad-lock policy / catalog / stores (spec 06-00-adlock-cache-sync)
+
+let adContainerRoot = "/var/mobile/Containers/Data/Application/11111111-2222-3333"
+let adGroupRoot = "/var/mobile/Containers/Shared/AppGroup/group.com.example.chat"
+
+expect(
+    AdLockPolicy.canonicalVarPath("/private/var/mobile/Containers/Data/Application/X/") ==
+        "/var/mobile/Containers/Data/Application/X",
+    "canonical path strips /private and trailing slash"
+)
+expect(
+    AdLockPolicy.containerInfo(for: adContainerRoot + "/Library/Caches/SplashAd")?.containerID ==
+        "11111111-2222-3333",
+    "app container id is parsed"
+)
+expect(
+    AdLockPolicy.containerInfo(for: adGroupRoot + "/Documents/splash_ad.json")?.isAppGroup == true,
+    "AppGroup path is recognised"
+)
+expect(
+    AdLockPolicy.containerInfo(for: "/var/mobile/Containers/Data/PluginKitPlugin/X") == nil,
+    "PluginKit containers are not ad targets"
+)
+
+let adAllowed = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Library/Caches/SplashAd",
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    selfAppGroupID: "group.com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adAllowed.allowed, "a cache subpath in a mobile-owned app container is allowed")
+
+let adRootRejected = AdLockPolicy.validateTarget(
+    path: adContainerRoot,
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adRootRejected.failure == .containerRoot, "container root is rejected")
+
+let adDownloads = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Downloads/ad",
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adDownloads.failure == .downloads, "Downloads is rejected")
+
+let adPreferences = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Library/Preferences/com.example.chat.plist",
+    isDirectory: false,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adPreferences.failure == .mainPreferences, "main preference plist is rejected")
+
+let adSymlink = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Library/Caches/SplashAd",
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: true,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adSymlink.failure == .symbolicLink, "symlink is rejected")
+
+let adRootOwner = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Library/Caches/SplashAd",
+    isDirectory: true,
+    ownerAccountName: "root",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.example.chat"
+)
+expect(adRootOwner.failure == .ownerMismatch, "root-owned target is rejected")
+
+let adSelf = AdLockPolicy.validateTarget(
+    path: adContainerRoot + "/Library/Caches/SplashAd",
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106",
+    resolvedContainerID: "com.qingtang.3106"
+)
+expect(adSelf.failure == .ignoredContainer, "the app itself is not a target")
+
+let adSystemGroup = AdLockPolicy.validateTarget(
+    path: "/var/mobile/Containers/Shared/AppGroup/group.com.apple.something/Library/Caches/x",
+    isDirectory: true,
+    ownerAccountName: "mobile",
+    isSymbolicLink: false,
+    selfBundleID: "com.qingtang.3106"
+)
+expect(adSystemGroup.failure == .ignoredContainer, "Apple AppGroups are ignored")
+
+let watchRule = AdLockRule(kind: .bundleID, target: "com.smzdm.client.ios")
+expect(
+    AdLockPolicy.isWhitelistedContainer(
+        id: "com.smzdm.client.ios", isAppGroup: false, rules: [watchRule]
+    ),
+    "bundle whitelist matches the app"
+)
+expectFalse(
+    AdLockPolicy.isWhitelistedContainer(
+        id: "com.smzdm.client.ios2", isAppGroup: false, rules: [watchRule]
+    ),
+    "bundle whitelist is exact, not a prefix"
+)
+let chatGroupRule = AdLockRule(kind: .bundleID, target: "com.tencent.xin")
+expect(
+    AdLockPolicy.isWhitelistedContainer(
+        id: "group.com.tencent.xin", isAppGroup: true, rules: [chatGroupRule]
+    ),
+    "an app rule covers its group.<bundle> AppGroup"
+)
+expectFalse(
+    AdLockPolicy.isWhitelistedContainer(
+        id: "group.com.example.other", isAppGroup: true, rules: [chatGroupRule]
+    ),
+    "unrelated AppGroups stay active"
+)
+let pathRule = AdLockRule(
+    kind: .path,
+    target: "/private/var/mobile/Containers/Data/Application/X/Library/Caches/SplashAd"
+)
+expect(
+    AdLockPolicy.isPathWhitelisted(
+        "/var/mobile/Containers/Data/Application/X/Library/Caches/SplashAd",
+        rules: [pathRule]
+    ),
+    "path whitelist compares canonical paths"
+)
+
+expect(AdLockPolicy.classifyAdFolder(name: "KSAdSDK") != nil, "KSAdSDK is an ad folder")
+expect(AdLockPolicy.classifyAdFolder(name: "SplashAdCache") != nil, "SplashAdCache is an ad folder")
+expect(AdLockPolicy.classifyAdFolder(name: "SplashBoard") == nil, "SplashBoard is never touched")
+expect(AdLockPolicy.classifyAdFolder(name: "WebKit") == nil, "WebKit is never touched")
+expect(AdLockPolicy.classifyAdFolder(name: "RandomCache") == nil, "unrelated caches are not targeted")
+expect(
+    AdLockPolicy.splitBoundaryTokens("SplashAdCache") == ["splash", "ad", "cache"],
+    "camelCase tokenisation is boundary-safe"
+)
+
+expect(AdLockCatalog.payload(forConfigFileName: "splash_ad.json") == .json, "JSON config is classified")
+expect(AdLockCatalog.payload(forConfigFileName: "splashad.plist") == .plist, "plist config is classified")
+expect(AdLockCatalog.payload(forConfigFileName: "random.dat") == nil, "unknown files are not configs")
+
+if let jsonPayload = AdLockPolicy.emptyPayload(forConfigFileName: "splash_ad.json"),
+   let object = try? JSONSerialization.jsonObject(with: jsonPayload) {
+    expect(object is [String: Any], "empty JSON payload is a valid dictionary")
+} else {
+    expect(false, "empty JSON payload is valid")
+}
+if let plistPayload = AdLockPolicy.emptyPayload(forConfigFileName: "splashad.plist"),
+   let object = try? PropertyListSerialization.propertyList(
+       from: plistPayload, options: [], format: nil
+   ) {
+    expect(object is [String: Any], "empty plist payload is a valid dictionary")
+} else {
+    expect(false, "empty plist payload is valid")
+}
+
+func adCatalogHasPath(_ bundleID: String, _ relativePath: String) -> Bool {
+    AdLockCatalog.knownPaths(for: bundleID).contains { $0.relativePath == relativePath }
+}
+expect(AdLockCatalog.knownPaths.count == 26, "catalog covers 26 bundle IDs")
+expect(
+    AdLockCatalog.knownPaths.values.reduce(0) { $0 + $1.count } == 65,
+    "catalog carries 65 curated paths"
+)
+expect(adCatalogHasPath("com.taobao.taobao4iphone", "Documents/TBDocuments/bootImagesDoc"),
+       "Taobao bootImagesDoc is present")
+expect(adCatalogHasPath("com.360buy.jdmobile", "Library/Caches/startADImage"),
+       "JD startADImage is present")
+expect(adCatalogHasPath("com.dianping.dpscope", "Documents/splashes_new"),
+       "Dianping splashes_new is present")
+expect(adCatalogHasPath("cn.10086.app", "Library/DownloadCenter"),
+       "China Mobile DownloadCenter is present")
+expect(adCatalogHasPath("com.tencent.live4iphone", "Library/Caches/QAD/PreloadImageAdOrderCache"),
+       "Tencent Video QAD path is present")
+expect(adCatalogHasPath("com.dragon.read", "Documents/TTAdSplashSimpleCache"),
+       "Fanqie TTAdSplashSimpleCache is present")
+expect(adCatalogHasPath("ctrip.com", "Library/Caches/LoadingImages"),
+       "Ctrip LoadingImages is present")
+expect(AdLockCatalog.adSDKTokens.count >= 80, "SDK marker table is broad")
+expect(AdLockCatalog.officialDisplayNames.count >= 7, "seven-app display map exists")
+expect(
+    AdLockCatalog.displayName(bundleID: "com.360buy.jdmobile", languageCode: "zh-Hans", fallback: nil) == "京东",
+    "official JD name wins over the fallback"
+)
+
+let adTestSuite = "adlock.policy.tests.\(UUID().uuidString)"
+if let adTestDefaults = UserDefaults(suiteName: adTestSuite) {
+    adTestDefaults.removePersistentDomain(forName: adTestSuite)
+    let whitelist = AdLockWhitelistStore(
+        defaults: adTestDefaults,
+        storageKey: "test.whitelist",
+        seededKey: "test.seeded"
+    )
+    expect(whitelist.containsExactBundleRule("com.smzdm.client.ios"), "crash guard is seeded once")
+    expect(
+        whitelist.isContainerWhitelisted(id: "com.smzdm.client.ios", isAppGroup: false),
+        "seeded crash guard whitelists the app"
+    )
+    let addedRule = whitelist.addBundleRule(bundleOrGroupID: "com.example.chat")
+    expect(addedRule != nil, "manual bundle rule can be added")
+    expect(
+        whitelist.isContainerWhitelisted(id: "group.com.example.chat", isAppGroup: true),
+        "manual app rule covers its AppGroup"
+    )
+    let validWatchPath = adContainerRoot + "/Library/Caches/SplashAd"
+    let pathAdd = whitelist.addPathRule(
+        rawPath: validWatchPath,
+        selfBundleID: "com.qingtang.3106",
+        selfAppGroupID: "group.com.qingtang.3106"
+    )
+    if case .success = pathAdd {
+        expect(whitelist.isPathWhitelisted(validWatchPath), "manual path rule is stored")
+    } else {
+        expect(false, "allowed path rule is accepted")
+    }
+    let rootAdd = whitelist.addPathRule(
+        rawPath: adContainerRoot,
+        selfBundleID: "com.qingtang.3106"
+    )
+    if case .failure(let failure) = rootAdd {
+        expect(failure == .containerRoot, "root path rule is rejected")
+    } else {
+        expect(false, "root path rule is rejected")
+    }
+    if let addedRule {
+        whitelist.remove(ruleID: addedRule.id)
+        expectFalse(
+            whitelist.isContainerWhitelisted(id: "com.example.chat", isAppGroup: false),
+            "removing a rule clears the whitelist"
+        )
+    }
+
+    let customStore = AdLockCustomWatchStore(defaults: adTestDefaults, storageKey: "test.custom")
+    let customAdd = customStore.addValidatedRule(
+        rawPath: validWatchPath,
+        selfBundleID: "com.qingtang.3106",
+        selfAppGroupID: "group.com.qingtang.3106"
+    )
+    if case .success(let customRule) = customAdd {
+        expect(customStore.contains(canonicalPath: validWatchPath), "custom path is stored")
+        customStore.remove(fullPath: customRule.fullPath)
+        expectFalse(customStore.contains(canonicalPath: validWatchPath), "custom path is removable")
+    } else {
+        expect(false, "allowed custom path is accepted")
+    }
+    let customDownloads = customStore.addValidatedRule(
+        rawPath: adContainerRoot + "/Downloads/ad",
+        selfBundleID: "com.qingtang.3106"
+    )
+    if case .failure(let failure) = customDownloads {
+        expect(failure == .downloads, "custom Downloads path is rejected")
+    } else {
+        expect(false, "custom Downloads path is rejected")
+    }
+    adTestDefaults.removePersistentDomain(forName: adTestSuite)
+} else {
+    expect(false, "test defaults suite is available")
+}
+
 if failures == 0 {
     print("PASS: \(checks) policy checks")
     exit(0)
