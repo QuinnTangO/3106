@@ -18,15 +18,15 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前版本 | **3.2.11**（正式版，build 38） |
-| 当前发布 | **v3.2.11**（build 38，2026-11-25：更新检查整体迁到 Gitee（静态 `update.json` + Releases API，兼容 Gitee 无 `html_url` 的响应）；设置页仓库入口与四语文案同步改为 Gitee；新增 IOSurface UAF 可用性只读探测。SHA256 以 `dist/SHA256SUMS.txt` 为准） |
-| 上一版本 | **v3.2.10**（build 37，2026-11-24：更新检查 403 修复：静态 `update.json` 探测、IPA 直链、API 403 兜底；SHA256 以 `dist/SHA256SUMS.txt` 为准） |
+| 当前版本 | **3.3.0**（正式版，build 39） |
+| 当前发布 | **v3.3.0**（build 39，2026-11-27：新增开屏广告缓存精准锁死（26 应用 / 65 路径 + 浅层 SDK 扫描、0555 + `.erosion_adlock` 防重建锁、白名单、自定义路径、批量恢复）；缓存清理器跳过锁目录；iPhone 15+/现代 iPad 电池预设保护；Wi-Fi 用户名兼容；设置页项目地址展示 GitHub，更新/下载仍走 Gitee。SHA256 以 `dist/SHA256SUMS.txt` 为准） |
+| 上一版本 | **v3.2.11**（build 38，2026-11-25：更新检查迁到 Gitee；新增 IOSurface UAF 只读探测；SHA256 以 `dist/SHA256SUMS.txt` 为准） |
 | 支持系统 | iOS 17.0–18.7.1 · 26.0–26.6.1 · 26.7–26.7.2 · 27.0–27.2 · 27.3 beta 1（按 build 号校验，`24C5037i`） |
 | 访问后端 | kernel / `bad_query` / `worse_query`（按系统版本自动选择） |
 | 界面语言 | 简体中文 · English · Tiếng Việt · 한국어 |
 | 签名要求 | iOS 26.7+ / 27.x 需要 App Group entitlement |
 | Bundle ID | `com.qingtang.3106` |
-| 仓库 | <https://gitee.com/tangzhanyuan/3106> · GitHub 镜像 <https://github.com/QuinnTangO/3106> |
+| 仓库 | <https://github.com/QuinnTangO/3106> · 更新与下载 <https://gitee.com/tangzhanyuan/3106> |
 
 ## 功能
 
@@ -34,6 +34,7 @@
 | --- | --- |
 | MobileGestalt 卡片页 | Erosion 风格：暂存开关 + 右上“应用”统一写入、Apple 智能四要素体检（配置 vs 真机对比）、一键恢复原厂、31 条预设（显示/设备/iPad/智能/高级）、锁定态与出厂基线保护 |
 | CacheExtra 字段编辑器 | 8 种类型（含 Array/Dictionary XML 片段）、搜索/增删改、plist 导入导出、类型保真 |
+| 开屏广告缓存 | 按应用内置路径 + 浅层 SDK 扫描定位开屏广告素材；清空后目录 `0555` + `.erosion_adlock` `0444` 防重建，配置文件写最小合法空内容后 `0444`；支持白名单、自定义路径、定位高亮、一键全锁/全部恢复 |
 | 区域与 Siri AI | 区域三元组 + 监管型号（已核实机型表）、原生 Siri AI / 实验模式、防重启反弹 |
 | 任意文件替换 | 选应用→逐级浏览容器目录→选文件→可选备份→替换；替换记录持久化、一键恢复备份、预设保存一键选用；受保护系统路径护栏 |
 | 通知音替换 | 按应用维护通知音路径表（手动输入），选自定义音频（aiff/aif/caf/m4a/wav ≤20MB）替换；自动备份 + 替换记录一键恢复；`.data` 选择器兜底，侧载包可选音频 |
@@ -61,6 +62,7 @@
 
 | 版本 | 主要内容 |
 | --- | --- |
+| **3.3.0** | 开屏广告缓存精准锁死（26 应用 / 65 路径 + SDK 扫描、防重建锁、白名单、自定义路径、批量恢复）；缓存清理器跳过锁目录；iPhone 15+/现代 iPad 电池预设保护；Wi-Fi 用户名留空/大小写兼容；项目地址展示 GitHub，更新下载仍走 Gitee |
 | **3.2.11** | 更新检查整体迁到 Gitee（静态 `update.json` + Releases API，兼容无 `html_url` 的响应）；设置页仓库入口与四语文案改为 Gitee；新增 IOSurface UAF 可用性只读探测 |
 | **3.2.10** | 更新检查 403 修复：静态 `update.json` 探测 + IPA 直链 + API 403 兜底 |
 | **3.2.8** | 沙箱访问缓存自愈（未识别容器/清理只统计自身）、设置页“重置访问缓存”、地区 sysconfig 优先与双键显示、CacheData 槽位状态与写入、影像与健康/实验性开关、伪监管体检、资产铭牌、更新弹窗「取消 / 更新」、A10 常量修正 |
@@ -169,12 +171,12 @@
 
 ## 下载与更新检查
 
-应用内「检查更新」走 **Gitee**（旧 GitHub 账号已停用，GitHub API / raw / releases 三条链路均不可用）：
+应用内「检查更新」与下载走 **Gitee**；GitHub 为项目主页与 IPA 镜像备份：
 
 - 正式发布：<https://gitee.com/tangzhanyuan/3106/releases>
 - 更新清单：<https://gitee.com/tangzhanyuan/3106/raw/3106/update.json>
-- 当前版本：`3106-3.2.11-unsigned.ipa` / build 38，SHA256 `e02084f40c17203d4b9c5062adf26b36214fa981a1881fd60b86f1b33adc9c49`
-- GitHub Releases 仅作 IPA 备份镜像，不参与应用内更新检查。
+- 当前版本：`3106-3.3.0-unsigned.ipa` / build 39，SHA256 以 `dist/SHA256SUMS.txt` 为准
+- GitHub Releases 仅作项目主页与 IPA 备份镜像，不参与应用内更新检查。
 
 发布资产为未签名 IPA，需要按上面的签名方式自行签名后安装。
 

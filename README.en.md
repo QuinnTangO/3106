@@ -18,15 +18,15 @@
 
 | Item | Value |
 | --- | --- |
-| Version | **3.2.11** (stable, build 38) |
-| Current release | **v3.2.11** (build 38, 2026-11-25: update check fully moved to Gitee (static `update.json` + Releases API, tolerating responses without `html_url`); Settings repository link and all four localizations now point to Gitee; read-only IOSurface UAF availability probe; SHA256 per `dist/SHA256SUMS.txt`) |
-| Previous release | **v3.2.10** (build 37, 2026-11-24: update-check 403 fixes — static `update.json` probe, direct IPA link, API 403 fallback; SHA256 per `dist/SHA256SUMS.txt`) |
+| Version | **3.3.0** (stable, build 39) |
+| Current release | **v3.3.0** (build 39, 2026-11-27: splash ad cache blocker (26 apps / 65 paths + shallow SDK scan, `0555` + `.erosion_adlock` anti-recreate lock, whitelist, custom paths, batch restore); cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; Settings project address shows GitHub while updates/downloads stay on Gitee. SHA256 per `dist/SHA256SUMS.txt`) |
+| Previous release | **v3.2.11** (build 38, 2026-11-25: update check moved to Gitee; read-only IOSurface UAF probe; SHA256 per `dist/SHA256SUMS.txt`) |
 | Supported systems | iOS 17.0–18.7.1 · 26.0–26.6.1 · 26.7–26.7.2 · 27.0–27.2 · 27.3 beta 1 (build-gated, `24C5037i`) |
 | Access backend | kernel / `bad_query` / `worse_query` (selected automatically by OS version) |
 | UI languages | Simplified Chinese · English · Vietnamese · Korean |
 | Signing | iOS 26.7+ / 27.x requires an App Group entitlement |
 | Bundle ID | `com.qingtang.3106` |
-| Repository | <https://gitee.com/tangzhanyuan/3106> · GitHub mirror <https://github.com/QuinnTangO/3106> |
+| Repository | <https://github.com/QuinnTangO/3106> · updates/downloads <https://gitee.com/tangzhanyuan/3106> |
 
 ## Features
 
@@ -34,6 +34,7 @@
 | --- | --- |
 | MobileGestalt cards page | Erosion-style staged toggles with one Apply button, Apple Intelligence 4-element checkup (config vs. on-device), factory restore, 31 presets (display/device/iPad/intelligence/advanced), lock states and factory-baseline protection |
 | CacheExtra field editor | 8 types (incl. Array/Dictionary XML fragments), search/add/edit/remove, plist import/export, type-faithful |
+| Splash ad blocker | Per-app curated paths + shallow SDK scan; clears and locks ad folders with `0555` + `.erosion_adlock` `0444`, writes minimal valid empty config files and locks them `0444`; whitelist, custom paths, locate highlight, lock-all/unlock-all |
 | Region & Siri AI | Region triplet + regulatory model (verified machine table), native Siri AI / experimental mode, anti-bounce protection |
 | Arbitrary file replace | Pick app → browse container directories → pick file → optional backup → replace; persistent log, one-tap restore, saved presets; protected-path rails |
 | Notification sounds | Per-app sound-path table (manual entry), custom audio replacement (aiff/aif/caf/m4a/wav ≤20MB); automatic backup + one-tap restore from the replace log; `.data` picker fallback so side-loaded builds can still select audio |
@@ -51,8 +52,9 @@
 
 ## Recent updates
 
-| Version | Highlights |
+| Version | Main changes |
 | --- | --- |
+| **3.3.0** | Splash ad cache blocker (26 apps / 65 paths + SDK scan, anti-recreate lock, whitelist, custom paths, batch restore); cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; project address shows GitHub while updates/downloads stay on Gitee |
 | **3.2.11** | Update check fully moved to Gitee (static `update.json` + Releases API, tolerating responses without `html_url`), Settings repository link and all four localizations switched to Gitee, read-only IOSurface UAF availability probe |
 | **3.2.10** | Update-check 403 fixes: static `update.json` probe, direct IPA link, API 403 fallback |
 | **3.2.8** | Sandbox access-cache self-heal (unidentified containers / cleaner seeing only itself), Settings → Reset Access Cache, sysconfig-first region read with both keys shown, CacheData slot status and writes, Media & Health and experimental toggles, fake-supervision audit, AssetTagInformation, Cancel / Update prompt, A10 constant fix |
@@ -111,7 +113,7 @@ The IPA is unsigned and must be signed with your own tool (LCSign / Sideloadly /
 
 **iOS 26.7+ / 27.x must keep the App Group entitlement** (Sideloadly drops it; use Impactor or Xcode).
 
-Current build: `3106-3.2.11-unsigned.ipa` / build 38. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
+Current build: `3106-3.3.0-unsigned.ipa` / build 39. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
 
 ## Download & update check
 

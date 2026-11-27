@@ -8,7 +8,8 @@
 #   bash scripts/release.sh --notes docs/releases/3.2.12.md
 #
 # 约定:
-#   - 应用内更新检查只走 Gitee；GitHub 仅作镜像备份。
+#   - 应用内更新检查与下载只走 Gitee；GitHub 仅作项目主页与镜像备份。
+#   - 设置页与 README 的「项目地址」展示 GitHub（QuinnTangO/3106）。
 #   - 两端必须上传同一 IPA 与同一 SHA256SUMS.txt。
 #   - IPA 必须保留 Payload/3106.app/ 目录层，否则签名工具拒绝导入。
 

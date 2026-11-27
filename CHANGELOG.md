@@ -4,6 +4,30 @@ All notable user-facing changes are documented in this file.
 
 ## [Unreleased]
 
+## [3.3.0 (39)] - 2026-11-27
+
+### Added
+
+- **开屏广告缓存精准锁死**：内置 26 个应用、65 条广告缓存路径，并在 `Documents` / `Library/Caches` / `Library/Application Support` / `tmp` 做浅层 SDK 标记扫描；匹配 `KSAdSDK` / `BUAdSDK` / Pangle / `GDTMobSDK` / `BaiduMobAd` / `SplashAd` / `LaunchAd` / `TADCache` 等目录与常见广告配置文件。
+- **防重建锁**：清空目标目录后写入 0 字节 `.erosion_adlock`（`0444`）并把目录锁为 `0555`；恢复时 `0755` 并移除占位；旧版空 `0555` 目录可一键加固。广告配置文件写入最小合法空 JSON/Plist 后锁为 `0444`。
+- **扫描范围与安全边界**：应用容器 + AppGroup 共享组；排除系统组、代理工具组、`SplashBoard` / `WebKit` / `Cookies` / `Downloads` / 容器根与符号链接；拒绝非 `mobile` 属主。
+- **白名单与自定义路径**：应用 / AppGroup / 精确路径三类规则；默认 `com.smzdm.client.ios` 防崩溃种子可删除；加入白名单自动恢复已锁目标；支持从文件浏览长按加入。
+- **批量与定位**：一键全锁 / 全部恢复；文件浏览新增定位滚动高亮；配置文件可只读预览。
+- **缓存清理器锁目录保护**：扫描与删除均识别 `.erosion_adlock`，整棵跳过、不计入可清理体积、不删除占位；测量缓存升级为 v2，结果提示跳过数量。
+- **Gestalt 电池保护**：iPhone 15+/现代 iPad 原生显示电池循环次数与生产日期时，锁定 `legacyBattery` 预设关闭；已开启时提示并允许关闭。
+- **设置页项目地址**：展示 GitHub `QuinnTangO/3106`；应用内更新检查与下载仍走 Gitee。
+
+### Fixed
+
+- **Wi-Fi 互传认证兼容**：Basic Auth 用户名允许留空或大小写不敏感的 `3106`，PIN 仍为恒时比较；解决浏览器留空用户名时反复弹认证。
+- **文件详情广告锁状态**：识别 `.erosion_adlock` 并显示占位状态；应用 `0755`/`0644` 时同步移除占位、恢复读写。
+
+### Verification
+
+- 四语（`zh-Hans` / `en` / `vi` / `ko`）各 1697 键，键集对齐、去重、格式符序列校验通过。
+- `bash Tests/run_policy_tests.sh`：582 项策略检查通过（含路径校验、白名单、锁态、电池与 Wi-Fi）。
+- Release `xcodebuild` 构建通过；新增 Swift 文件已在 `project.pbxproj` 四处登记。
+
 ## [3.2.11 (38)] - 2026-11-25
 
 ### Changed

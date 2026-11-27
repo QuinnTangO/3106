@@ -44,6 +44,7 @@
 
 - **GitHub 与 Gitee 必须同时发布**：同一提交、同一 IPA、同一 SHA256。只发一端视为未完成。
 - **应用内更新检查只走 Gitee**：`tangzhanyuan/3106` 的 `update.json` 与 Releases API 是唯一更新链路；GitHub Releases 仅作镜像备份。
+- **项目地址展示 GitHub**：设置页与 README 的「项目地址」显示 `QuinnTangO/3106`；更新检查与下载仍指向 Gitee。
 - 发布包必须含 `Payload/3106.app/` 目录层。直接压缩 `.app` 内容或漏掉该层，签名工具会拒绝导入（3.2.11 首发事故）。
 - 一键发布：`bash scripts/release.sh`（构建 → 打包 → 校验 → 更新 `update.json` / `SHA256SUMS.txt` → 双端上传）。
 
