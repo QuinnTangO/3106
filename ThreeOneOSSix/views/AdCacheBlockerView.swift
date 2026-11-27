@@ -20,9 +20,27 @@ struct AdCacheBlockerView: View {
     @State private var showAddCustomSheet = false
     @State private var showWhitelistSheet = false
     @State private var whitelistRulesCount = 0
-    @State private var batchAction: AdLockBatchAction?
-    @State private var notice: AdLockNotice?
+    @State private var activeAlert: AdLockAlert?
     @State private var hasLoaded = false
+
+    /// Routes the two alert sources through one binding. SwiftUI only
+    /// guarantees one `.alert` per view hierarchy; stacking two modifiers
+    /// can make the batch confirmation silently disappear.
+    private var notice: AdLockNotice? {
+        get {
+            if case .notice(let value) = activeAlert { return value }
+            return nil
+        }
+        nonmutating set { activeAlert = newValue.map { .notice($0) } }
+    }
+
+    private var batchAction: AdLockBatchAction? {
+        get {
+            if case .batch(let action) = activeAlert { return action }
+            return nil
+        }
+        nonmutating set { activeAlert = newValue.map { .batch($0) } }
+    }
 
     // MARK: - Derived state
 
@@ -126,15 +144,17 @@ struct AdCacheBlockerView: View {
                 AdWhitelistManagerSheet(entries: detectedEntries)
             }
         }
-        .alert(item: $batchAction) { action in
-            batchAlert(for: action)
-        }
-        .alert(item: $notice) { notice in
-            Alert(
-                title: Text(notice.title),
-                message: Text(notice.message),
-                dismissButton: .default(Text(language.text("common.ok")))
-            )
+        .alert(item: $activeAlert) { alert in
+            switch alert {
+            case .batch(let action):
+                return batchAlert(for: action)
+            case .notice(let notice):
+                return Alert(
+                    title: Text(notice.title),
+                    message: Text(notice.message),
+                    dismissButton: .default(Text(language.text("common.ok")))
+                )
+            }
         }
         .onAppear {
             whitelistRulesCount = AdLockWhitelistStore.shared.rulesSnapshot().count
@@ -1137,6 +1157,20 @@ enum AdLockBatchAction: String, Identifiable {
     case lockAll
     case unlockAll
     var id: String { rawValue }
+}
+
+enum AdLockAlert: Identifiable {
+    case batch(AdLockBatchAction)
+    case notice(AdLockNotice)
+
+    var id: String {
+        switch self {
+        case .batch(let action):
+            return "batch:" + action.id
+        case .notice(let notice):
+            return "notice:" + notice.id.uuidString
+        }
+    }
 }
 
 struct AdLockNotice: Identifiable {
