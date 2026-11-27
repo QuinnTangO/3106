@@ -4,10 +4,11 @@ All notable user-facing changes are documented in this file.
 
 ## [Unreleased]
 
-## [3.3.0 (39)] - 2026-11-27
+## [3.2.12 (40)] - 2026-11-27
 
 ### Added
 
+- **广告锁页面按参考项目重做**：概览卡（命中数、防重建锁比例、白名单跳过、可释放体积）、按应用分组、行内定位/预览/加白/锁死/恢复、批量菜单、边界说明，并支持「显示暂未检出广告目录的容器」。
 - **开屏广告缓存精准锁死**：内置 26 个应用、65 条广告缓存路径，并在 `Documents` / `Library/Caches` / `Library/Application Support` / `tmp` 做浅层 SDK 标记扫描；匹配 `KSAdSDK` / `BUAdSDK` / Pangle / `GDTMobSDK` / `BaiduMobAd` / `SplashAd` / `LaunchAd` / `TADCache` 等目录与常见广告配置文件。
 - **防重建锁**：清空目标目录后写入 0 字节 `.erosion_adlock`（`0444`）并把目录锁为 `0555`；恢复时 `0755` 并移除占位；旧版空 `0555` 目录可一键加固。广告配置文件写入最小合法空 JSON/Plist 后锁为 `0444`。
 - **扫描范围与安全边界**：应用容器 + AppGroup 共享组；排除系统组、代理工具组、`SplashBoard` / `WebKit` / `Cookies` / `Downloads` / 容器根与符号链接；拒绝非 `mobile` 属主。
@@ -22,9 +23,13 @@ All notable user-facing changes are documented in this file.
 - **Wi-Fi 互传认证兼容**：Basic Auth 用户名允许留空或大小写不敏感的 `3106`，PIN 仍为恒时比较；解决浏览器留空用户名时反复弹认证。
 - **文件详情广告锁状态**：识别 `.erosion_adlock` 并显示占位状态；应用 `0755`/`0644` 时同步移除占位、恢复读写。
 
+### Fixed
+
+- **自签名环境文件选择无响应**：`MigrationView` / `KeypadThemeView` / `MigrationConfigBackupView` 三处 SwiftUI `.fileImporter` 改为 `UIDocumentPickerViewController` 包装（`FileDocumentPicker`，`asCopy: true`）。
+
 ### Verification
 
-- 四语（`zh-Hans` / `en` / `vi` / `ko`）各 1697 键，键集对齐、去重、格式符序列校验通过。
+- 四语（`zh-Hans` / `en` / `vi` / `ko`）各 1742 键，键集对齐、去重、格式符序列校验通过。
 - `bash Tests/run_policy_tests.sh`：582 项策略检查通过（含路径校验、白名单、锁态、电池与 Wi-Fi）。
 - Release `xcodebuild` 构建通过；新增 Swift 文件已在 `project.pbxproj` 四处登记。
 
@@ -233,7 +238,7 @@ iOS 27 写入失败专项（spec `02-00-ios27-grant-hardening`）：修复 iOS 2
 ### Other
 
 - CI 增加 push/PR 触发（3106/main 分支）；产物哨兵改为从源码动态提取 ≥16 字节特征串，不再手工维护常量。
-- README / README.en 产物说明与 `dist/SHA256SUMS.txt` 修正（只列实际存在的产物，3.3.0 行按文件实算补齐）。
+- README / README.en 产物说明与 `dist/SHA256SUMS.txt` 修正（只列实际存在的产物，当前版本行按文件实算补齐）。
 
 ## [3.2.5] - 2026-11-13
 

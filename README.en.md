@@ -18,8 +18,8 @@
 
 | Item | Value |
 | --- | --- |
-| Version | **3.3.0** (stable, build 39) |
-| Current release | **v3.3.0** (build 39, 2026-11-27: splash ad cache blocker (26 apps / 65 paths + shallow SDK scan, `0555` + `.erosion_adlock` anti-recreate lock, whitelist, custom paths, batch restore); cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; Settings project address shows GitHub while updates/downloads stay on Gitee. SHA256 per `dist/SHA256SUMS.txt`) |
+| Version | **3.2.12** (stable, build 40) |
+| Current release | **v3.2.12** (build 40, 2026-11-27: splash ad cache page rebuilt to match the reference layout (overview card, per-app sections, inline locate/preview/ignore/lock actions, batch menu, boundary card); 26 apps / 65 paths + shallow SDK scan, `0555` + `.erosion_adlock` anti-recreate lock, whitelist, custom paths, batch restore; file picking uses the UIKit picker for self-signed builds; cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; Settings project address shows GitHub while updates/downloads stay on Gitee. SHA256 per `dist/SHA256SUMS.txt`) |
 | Previous release | **v3.2.11** (build 38, 2026-11-25: update check moved to Gitee; read-only IOSurface UAF probe; SHA256 per `dist/SHA256SUMS.txt`) |
 | Supported systems | iOS 17.0–18.7.1 · 26.0–26.6.1 · 26.7–26.7.2 · 27.0–27.2 · 27.3 beta 1 (build-gated, `24C5037i`) |
 | Access backend | kernel / `bad_query` / `worse_query` (selected automatically by OS version) |
@@ -54,7 +54,7 @@
 
 | Version | Main changes |
 | --- | --- |
-| **3.3.0** | Splash ad cache blocker (26 apps / 65 paths + SDK scan, anti-recreate lock, whitelist, custom paths, batch restore); cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; project address shows GitHub while updates/downloads stay on Gitee |
+| **3.2.12** | Ad-lock page rebuilt to match the reference layout; 26 apps / 65 paths + SDK scan, anti-recreate lock, whitelist, custom paths, batch restore; UIKit document picker for self-signed builds; cleaner skips locked directories; iPhone 15+/modern iPad battery-preset guard; Wi-Fi username compatibility; project address shows GitHub while updates/downloads stay on Gitee |
 | **3.2.11** | Update check fully moved to Gitee (static `update.json` + Releases API, tolerating responses without `html_url`), Settings repository link and all four localizations switched to Gitee, read-only IOSurface UAF availability probe |
 | **3.2.10** | Update-check 403 fixes: static `update.json` probe, direct IPA link, API 403 fallback |
 | **3.2.8** | Sandbox access-cache self-heal (unidentified containers / cleaner seeing only itself), Settings → Reset Access Cache, sysconfig-first region read with both keys shown, CacheData slot status and writes, Media & Health and experimental toggles, fake-supervision audit, AssetTagInformation, Cancel / Update prompt, A10 constant fix |
@@ -113,7 +113,7 @@ The IPA is unsigned and must be signed with your own tool (LCSign / Sideloadly /
 
 **iOS 26.7+ / 27.x must keep the App Group entitlement** (Sideloadly drops it; use Impactor or Xcode).
 
-Current build: `3106-3.3.0-unsigned.ipa` / build 39. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
+Current build: `3106-3.2.12-unsigned.ipa` / build 40. On iOS 17/18, tap the Unlock banner at the top of the main screen once per launch; overwrite installs no longer replay onboarding.
 
 ## Download & update check
 

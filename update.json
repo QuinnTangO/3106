@@ -1,8 +1,8 @@
 {
-  "version": "3.3.0",
-  "build": 39,
-  "page": "https://gitee.com/tangzhanyuan/3106/releases/tag/v3.3.0",
-  "ipa": "https://gitee.com/tangzhanyuan/3106/releases/download/v3.3.0/3106-3.3.0-unsigned.ipa",
-  "notes": "新增开屏广告缓存精准锁死：按应用路径与浅层扫描定位广告目录，清空后 0555 锁死并写入防重建占位，支持白名单、自定义路径与一键恢复；缓存清理器跳过锁目录；iPhone 15+/现代 iPad 电池预设保护；Wi-Fi 用户名留空/大小写兼容；项目地址展示 GitHub，更新下载仍走 Gitee。",
+  "version": "3.2.12",
+  "build": 40,
+  "page": "https://gitee.com/tangzhanyuan/3106/releases/tag/v3.2.12",
+  "ipa": "https://gitee.com/tangzhanyuan/3106/releases/download/v3.2.12/3106-3.2.12-unsigned.ipa",
+  "notes": "开屏广告缓存精准锁死页按参考项目重做：概览卡、应用分组、行内定位/预览/加白/锁死、批量菜单与边界说明；新增防重建锁、白名单、自定义路径与清理器锁目录保护；iPhone 15+/现代 iPad 电池预设保护；Wi-Fi 用户名兼容；自签名环境文件选择改用 UIKit 选择器；项目地址展示 GitHub，更新下载仍走 Gitee。",
   "published": "2026-11-27"
 }
